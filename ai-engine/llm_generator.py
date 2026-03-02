@@ -28,9 +28,9 @@ class LLMGenerator:
 
     def _is_valid_format(self, text: str) -> bool:
         required_sections = [
-            "## Security Risk",
-            "## Compliance Impact",
-            "## Remediation Steps"
+            "Security Risk",
+            "Compliance Impact",
+            "Remediation Steps"
         ]
         return all(section in text for section in required_sections)
 
@@ -42,7 +42,7 @@ class LLMGenerator:
 
         context_text = "\n\n".join(
             [c["text"] for c in rag_context if "text" in c]
-        )
+        )   
 
         # Limit context size
         MAX_CONTEXT_CHARS = 3000
