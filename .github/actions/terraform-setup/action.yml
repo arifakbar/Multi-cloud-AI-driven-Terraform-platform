@@ -1,0 +1,28 @@
+name: 'Setup Terraform with Cache'
+description: 'Install Terraform and initialize with caching'
+inputs:
+  working-directory:
+    description: 'Directory containing Terraform configs'
+    required: true
+  terraform-version:
+    description: 'Terraform version'
+    required: false
+    default: 'latest'
+runs:
+  using: 'composite'
+  steps:
+    - name: Setup Terraform
+      uses: hashicorp/setup-terraform@v3
+      with:
+        terraform_version: ${{ inputs.terraform-version }}
+    - name: Cache Terraform plugins
+      uses: actions/cache@v4
+      with:
+        path: ${{ inputs.working-directory }}/.terraform
+        key: ${{ runner.os }}-terraform-${{ hashFiles(format('{0}/.terraform.lock.hcl', inputs.working-directory)) }}
+        restore-keys: |
+          ${{ runner.os }}-terraform-
+    - name: Terraform Init
+      shell: bash
+      working-directory: ${{ inputs.working-directory }}
+      run: terraform init

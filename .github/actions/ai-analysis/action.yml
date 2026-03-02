@@ -1,0 +1,44 @@
+name: 'AI Security Analysis'
+description: 'Run AI analyzer on Terraform plan JSON and output severity'
+inputs:
+  plan-json-path:
+    description: 'Path to plan.json file'
+    required: true
+outputs:
+  high_risk:
+    description: 'Whether high risk was detected'
+    value: ${{ steps.check-severity.outputs.high }}
+runs:
+  using: 'composite'
+  steps:
+    - name: Set up Python
+      uses: actions/setup-python@v5
+      with:
+        python-version: '3.x'
+        cache: 'pip'
+        cache-dependency-path: ai-engine/requirements.txt
+    - name: Install dependencies
+      shell: bash
+      run: |
+        pip install --upgrade pip
+        pip install -r ai-engine/requirements.txt
+    - name: Build Vector Index
+      shell: bash
+      run: python ai-engine/embedder.py
+    - name: Run AI Analyzer
+      shell: bash
+      run: python ai-engine/analyzer.py ${{ inputs.plan-json-path }} || true
+    - name: Publish Security Report
+      shell: bash
+      run: cat SECURITY_REPORT.md
+    - name: Check Severity
+      id: check-severity
+      shell: bash
+      run: |-
+        RESULT=$(python ai-engine/check_severity.py || true)
+        echo "Raw Result: $RESULT"
+        if echo "$RESULT" | grep -q "high=true"; then
+          echo "high=true" >> $GITHUB_OUTPUT
+        else
+          echo "high=false" >> $GITHUB_OUTPUT
+        fi
