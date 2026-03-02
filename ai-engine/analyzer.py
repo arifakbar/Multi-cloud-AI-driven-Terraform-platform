@@ -1,75 +1,63 @@
 import json
 import sys
+import traceback
 from engine import analyze_plan
+
 from rag_retriever import RAGRetriever
 from llm_generator import LLMGenerator
 
+
+# Toggle debug logs (set to True locally if needed)
 DEBUG = False
 
 
-def log(msg):
+def log(message):
     if DEBUG:
-        print(msg)
+        print(message)
 
 
-# ----------------------------
-# INPUT SANITIZATION
-# ----------------------------
-
-def sanitize(text: str) -> str:
-    if not text:
-        return ""
-
-    dangerous_patterns = [
-        "STOP ANSWER",
-        "Ignore previous instructions",
-        "Return raw",
-        "###",
-        "```"
-    ]
-
-    for p in dangerous_patterns:
-        text = text.replace(p, "")
-
-    return text.strip()
-
-
-# ----------------------------
+# --------------------------------------
 # AI ENRICHMENT
-# ----------------------------
+# --------------------------------------
 
 def enrich_with_ai(violations):
+    """
+    Adds RAG retrieval + LLM explanation to each violation.
+    Fails gracefully if AI components break.
+    """
+
     try:
         retriever = RAGRetriever()
         generator = LLMGenerator()
     except Exception as e:
-        print(f"⚠️ AI initialization failed: {e}")
+        print(f"⚠️ AI components failed to initialize: {e}")
         return violations
 
     enriched = []
 
     for v in violations:
         try:
-            issue_text = sanitize(
-                v.get("issue") or v.get("message") or "security violation"
-            )
+            issue_text = v.get("issue") or v.get("message") or "security violation"
 
             query = (
                 f"{issue_text} {v.get('resource', '')} "
                 f"CIS compliance risk impact remediation"
             )
 
+            log(f"Embedding query: {query}")
+
             rag_context = retriever.search(query)
 
             explanation = generator.generate_explanation(
                 violation={
-                    "resource": sanitize(v.get("resource")),
+                    "resource": v.get("resource"),
                     "issue": issue_text,
-                    "severity": sanitize(v.get("severity"))
+                    "severity": v.get("severity")
                 },
                 rag_context=rag_context
             )
 
+            # Keep RAG internally if needed — not required for CI output
             v["ai_explanation"] = explanation
 
         except Exception as e:
@@ -81,9 +69,9 @@ def enrich_with_ai(violations):
     return enriched
 
 
-# ----------------------------
-# MARKDOWN REPORT
-# ----------------------------
+# --------------------------------------
+# MARKDOWN REPORT GENERATION
+# --------------------------------------
 
 def generate_markdown_report(results):
     severity_emoji = {
@@ -115,9 +103,9 @@ def generate_markdown_report(results):
     return "\n".join(report)
 
 
-# ----------------------------
+# --------------------------------------
 # MAIN
-# ----------------------------
+# --------------------------------------
 
 def main():
     if len(sys.argv) < 2:
@@ -142,6 +130,7 @@ def main():
     else:
         print("✅ No violations found. Skipping AI enrichment.")
 
+    # Normalize severity case
     for v in violations:
         v["severity"] = v["severity"].lower()
 
@@ -157,14 +146,17 @@ def main():
         "violations": violations
     }
 
+    # Save JSON for automation
     with open("violations.json", "w") as f:
         json.dump(output, f, indent=2)
 
+    # Save Markdown report for humans
     markdown_report = generate_markdown_report(output)
 
     with open("SECURITY_REPORT.md", "w") as f:
         f.write(markdown_report)
 
+    # Clean console summary (CI-friendly)
     print("\n🛡️ SECURITY SUMMARY")
     print(f"Total: {output['total_violations']} | "
           f"High: {high_count} | "
