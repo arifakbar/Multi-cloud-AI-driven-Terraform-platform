@@ -6,15 +6,12 @@ on:
       cloud_provider:
         required: true
         type: string
-        description: "azure or aws"
       working_directory:
         required: true
         type: string
-        description: "Path to terraform files"
       artifact_name:
         required: true
         type: string
-        description: "Unique name for the plan artifact"
     outputs:
       high_risk:
         description: "Whether the plan contains high risk changes"
@@ -30,15 +27,27 @@ jobs:
     outputs:
       high_risk: ${{ steps.severity.outputs.high }}
     
-    defaults:
-      run:
-        working-directory: ${{ inputs.working_directory }}
-
+    # REMOVED: defaults.run.working-directory 
+    # Reason: AI steps run at root, Terraform steps run in subdirs
+    
     steps:
       - name: Checkout
         uses: actions/checkout@v4
 
+      # --- AI / Security Setup (Runs at Root) ---
+      - name: Check AI Engine Dependencies
+        id: check-deps
+        run: |
+          if [ -f "ai-engine/requirements.txt" ]; then
+            echo "exists=true" >> $GITHUB_OUTPUT
+          else
+            echo "exists=false" >> $GITHUB_OUTPUT
+            echo "::error::ai-engine/requirements.txt not found. Ensure security tools are checked out."
+            exit 1
+          fi
+
       - name: Cache Pip
+        if: steps.check-deps.outputs.exists == 'true'
         uses: actions/cache@v4
         with:
           path: ~/.cache/pip
@@ -47,17 +56,20 @@ jobs:
             ${{ runner.os }}-pip-
 
       - name: Setup Python
+        if: steps.check-deps.outputs.exists == 'true'
         uses: actions/setup-python@v5
         with:
           python-version: "3.11"
 
       - name: Install AI Dependencies
+        if: steps.check-deps.outputs.exists == 'true'
         run: pip install --quiet -r ai-engine/requirements.txt
 
       - name: Build Vector Index
+        if: steps.check-deps.outputs.exists == 'true'
         run: python ai-engine/embedder.py
 
-      # --- Authentication Logic ---
+      # --- Authentication Logic (Runs at Root) ---
       - name: Azure Login
         if: inputs.cloud_provider == 'azure'
         uses: azure/login@v2
@@ -73,24 +85,27 @@ jobs:
           role-to-assume: ${{ vars.AWS_ARN }}
           aws-region: ${{ vars.AWS_REGION }}
 
-      # --- Terraform Logic ---
+      # --- Terraform Logic (Runs in Subdirectory) ---
       - name: Setup Terraform
         uses: hashicorp/setup-terraform@v3
         with:
           terraform_version: "1.6.0"
 
       - name: Terraform Init
+        working-directory: ${{ inputs.working_directory }}
         run: terraform init -input=false
 
       - name: Terraform Plan
+        working-directory: ${{ inputs.working_directory }}
         run: terraform plan -out=tfplan -input=false -no-color
 
       - name: Export Plan JSON
+        working-directory: ${{ inputs.working_directory }}
         run: terraform show -json tfplan > plan.json
 
-      # --- Security Governance ---
+      # --- Security Governance (Runs at Root, reads file from subdir) ---
       - name: Run AI Analyzer
-        run: python ai-engine/analyzer.py plan.json
+        run: python ai-engine/analyzer.py ${{ inputs.working_directory }}/plan.json
 
       - name: Check Severity
         id: severity
