@@ -1,0 +1,111 @@
+name: Reusable Terraform Plan
+
+on:
+  workflow_call:
+    inputs:
+      cloud_provider:
+        required: true
+        type: string
+        description: "azure or aws"
+      working_directory:
+        required: true
+        type: string
+        description: "Path to terraform files"
+      artifact_name:
+        required: true
+        type: string
+        description: "Unique name for the plan artifact"
+    outputs:
+      high_risk:
+        description: "Whether the plan contains high risk changes"
+        value: ${{ jobs.plan.outputs.high_risk }}
+
+permissions:
+  id-token: write
+  contents: read
+
+jobs:
+  plan:
+    runs-on: ubuntu-latest
+    outputs:
+      high_risk: ${{ steps.severity.outputs.high }}
+    
+    defaults:
+      run:
+        working-directory: ${{ inputs.working_directory }}
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Cache Pip
+        uses: actions/cache@v4
+        with:
+          path: ~/.cache/pip
+          key: ${{ runner.os }}-pip-${{ hashFiles('ai-engine/requirements.txt') }}
+          restore-keys: |
+            ${{ runner.os }}-pip-
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install AI Dependencies
+        run: pip install --quiet -r ai-engine/requirements.txt
+
+      - name: Build Vector Index
+        run: python ai-engine/embedder.py
+
+      # --- Authentication Logic ---
+      - name: Azure Login
+        if: inputs.cloud_provider == 'azure'
+        uses: azure/login@v2
+        with:
+          client-id: ${{ secrets.AZURE_CLIENT_ID }}
+          tenant-id: ${{ secrets.AZURE_TENANT_ID }}
+          subscription-id: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
+
+      - name: Configure AWS Credentials
+        if: inputs.cloud_provider == 'aws'
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ vars.AWS_ARN }}
+          aws-region: ${{ vars.AWS_REGION }}
+
+      # --- Terraform Logic ---
+      - name: Setup Terraform
+        uses: hashicorp/setup-terraform@v3
+        with:
+          terraform_version: "1.6.0"
+
+      - name: Terraform Init
+        run: terraform init -input=false
+
+      - name: Terraform Plan
+        run: terraform plan -out=tfplan -input=false -no-color
+
+      - name: Export Plan JSON
+        run: terraform show -json tfplan > plan.json
+
+      # --- Security Governance ---
+      - name: Run AI Analyzer
+        run: python ai-engine/analyzer.py plan.json
+
+      - name: Check Severity
+        id: severity
+        run: |
+          RESULT=$(python ai-engine/check_severity.py)
+          if echo "$RESULT" | grep -q "high=true"; then
+            echo "high=true" >> $GITHUB_OUTPUT
+          else
+            echo "high=false" >> $GITHUB_OUTPUT
+          fi
+
+      - name: Upload Plan Artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{ inputs.artifact_name }}
+          path: ${{ inputs.working_directory }}/tfplan
+          retention-days: 1
+          if-no-files-found: error
