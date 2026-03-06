@@ -12,6 +12,11 @@ on:
       artifact_name:
         required: true
         type: string
+      aws_region:
+        description: "AWS Region to deploy to"
+        required: false
+        type: string
+        default: "us-east-1"
     outputs:
       high_risk:
         description: "Whether the plan contains high risk changes"
@@ -27,9 +32,6 @@ jobs:
     outputs:
       high_risk: ${{ steps.severity.outputs.high }}
     
-    # REMOVED: defaults.run.working-directory 
-    # Reason: AI steps run at root, Terraform steps run in subdirs
-    
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -42,7 +44,6 @@ jobs:
             echo "exists=true" >> $GITHUB_OUTPUT
           else
             echo "exists=false" >> $GITHUB_OUTPUT
-            echo "::error::ai-engine/requirements.txt not found. Ensure security tools are checked out."
             exit 1
           fi
 
@@ -69,7 +70,7 @@ jobs:
         if: steps.check-deps.outputs.exists == 'true'
         run: python ai-engine/embedder.py
 
-      # --- Authentication Logic (Runs at Root) ---
+      # --- Authentication Logic ---
       - name: Azure Login
         if: inputs.cloud_provider == 'azure'
         uses: azure/login@v2
@@ -82,28 +83,39 @@ jobs:
         if: inputs.cloud_provider == 'aws'
         uses: aws-actions/configure-aws-credentials@v4
         with:
-          role-to-assume: ${{ vars.AWS_ARN }}
-          aws-region: ${{ vars.AWS_REGION }}
+          role-to-assume: ${{ secrets.AWS_ARN }}
+          aws-region: ${{ inputs.aws_region }}
 
-      # --- Terraform Logic (Runs in Subdirectory) ---
+      # --- Terraform Logic ---
       - name: Setup Terraform
         uses: hashicorp/setup-terraform@v3
         with:
           terraform_version: "1.6.0"
 
+      # Explicit Env Vars for Azure to prevent CLI Auth fallback
       - name: Terraform Init
         working-directory: ${{ inputs.working_directory }}
+        env:
+          ARM_USE_OIDC: true
+          ARM_CLIENT_ID: ${{ secrets.AZURE_CLIENT_ID }}
+          ARM_SUBSCRIPTION_ID: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
+          ARM_TENANT_ID: ${{ secrets.AZURE_TENANT_ID }}
         run: terraform init -input=false
 
       - name: Terraform Plan
         working-directory: ${{ inputs.working_directory }}
+        env:
+          ARM_USE_OIDC: true
+          ARM_CLIENT_ID: ${{ secrets.AZURE_CLIENT_ID }}
+          ARM_SUBSCRIPTION_ID: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
+          ARM_TENANT_ID: ${{ secrets.AZURE_TENANT_ID }}
         run: terraform plan -out=tfplan -input=false -no-color
 
       - name: Export Plan JSON
         working-directory: ${{ inputs.working_directory }}
         run: terraform show -json tfplan > plan.json
 
-      # --- Security Governance (Runs at Root, reads file from subdir) ---
+      # --- Security Governance ---
       - name: Run AI Analyzer
         run: python ai-engine/analyzer.py ${{ inputs.working_directory }}/plan.json
 
