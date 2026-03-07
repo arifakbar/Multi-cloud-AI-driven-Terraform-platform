@@ -76,5 +76,5 @@ def format_violation(resource_type, resource_name, rule_output):
     return {
         "resource": f"{resource_type}.{resource_name}",
         "severity": rule_output.get("severity", "low"),
-        "message": rule_output.get("message", "Violation detected")
+        "message": rule_output.get("issue", "Violation detected")
     }

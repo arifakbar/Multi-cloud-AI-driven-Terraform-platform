@@ -28,25 +28,29 @@ class LLMGenerator:
         prompt = f"""
 You are a cloud security expert reviewing Terraform infrastructure.
 
+Analyze ONLY the violation below.
+
 Resource: {violation['resource']}
-Issue: {violation['issue']}
+Issue: {violation['message']}
 Severity: {violation['severity']}
 
-Relevant security context:
+Security guidance:
 {context_text}
 
-Write a short analysis. 
-Focus only on the specific violation.
-Do not list multiple CIS sections.
+Instructions:
+- Explain ONLY this violation
+- Do NOT copy documentation
+- Do NOT create sections like "2. Public Access Block"
+- Be concise
 
-### START ANSWER
+Respond using EXACTLY this format:
 
 Security Risk:
 Attack Scenario:
-Terraform Remediation (Terraform code only):
+Terraform Remediation:
 Compliance Reference:
 
-### END ANSWER
+Answer:
 """
 
         inputs = self.tokenizer(prompt, return_tensors="pt")
@@ -56,6 +60,9 @@ Compliance Reference:
                 **inputs,
                 max_new_tokens=300,
                 do_sample=False,
+                temperature=0.2,
+                repetition_penalty=1.2,
+                eos_token_id=self.tokenizer.eos_token_id,
                 pad_token_id=self.tokenizer.eos_token_id
             )
 
