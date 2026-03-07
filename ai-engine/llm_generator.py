@@ -4,7 +4,7 @@ from transformers import AutoTokenizer, AutoModelForCausalLM
 
 MODEL_NAME = os.getenv(
     "LLM_MODEL",
-    "microsoft/Phi-3-mini-4k-instruct"
+    "TinyLlama/TinyLlama-1.1B-Chat-v1.0"
 )
 
 
@@ -55,23 +55,14 @@ Compliance Reference:
 
 Rules:
 - Only discuss the resource above
-- Do not invent EC2 or other services
+- Do not invent other services
 - Do not output markdown
 - Do not output explanations outside the format
 
 Answer:
 """
 
-        messages = [
-            {"role": "system", "content": "You are a precise cloud security expert. Follow the requested format exactly."},
-            {"role": "user", "content": prompt}
-        ]
-
-        inputs = self.tokenizer.apply_chat_template(
-            messages,
-            return_tensors="pt",
-            add_generation_prompt=True
-        )
+        inputs = self.tokenizer(prompt, return_tensors="pt")
 
         with torch.no_grad():
             outputs = self.model.generate(
@@ -79,7 +70,6 @@ Answer:
                 max_new_tokens=120,
                 do_sample=False,
                 temperature=0,
-                top_p=0.9,
                 repetition_penalty=1.2,
                 eos_token_id=self.tokenizer.eos_token_id,
                 pad_token_id=self.tokenizer.eos_token_id
