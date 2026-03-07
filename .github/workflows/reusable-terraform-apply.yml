@@ -12,11 +12,6 @@ on:
       artifact_name:
         required: true
         type: string
-      aws_region:
-        description: "AWS Region to deploy to"
-        required: false
-        type: string
-        default: "us-east-1"
 
 permissions:
   id-token: write
@@ -42,15 +37,15 @@ jobs:
         if: inputs.cloud_provider == 'aws'
         uses: aws-actions/configure-aws-credentials@v4
         with:
-          role-to-assume: ${{ secrets.AWS_ARN }}
-          aws-region: ${{ inputs.aws_region }}
+          role-to-assume: ${{ secrets.AWS_ROLE_ARN }}
+          aws-region: us-east-1  # HARDCODED PER REQUEST
+          role-duration-seconds: 1200
 
       - name: Setup Terraform
         uses: hashicorp/setup-terraform@v3
         with:
           terraform_version: "1.6.0"
 
-      # Explicit Env Vars for Azure to prevent CLI Auth fallback
       - name: Terraform Init
         working-directory: ${{ inputs.working_directory }}
         env:

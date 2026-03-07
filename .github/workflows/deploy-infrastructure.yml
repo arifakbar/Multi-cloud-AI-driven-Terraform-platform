@@ -12,11 +12,6 @@ on:
           - all
           - azure
           - aws
-      aws_region:
-        description: 'AWS Region (if applicable)'
-        required: false
-        default: 'us-east-1'
-        type: string
 
 permissions:
   id-token: write
@@ -38,8 +33,6 @@ jobs:
       cloud_provider: azure
       working_directory: terraform/azure
       artifact_name: tfplan-azure
-      # AWS Region not needed for Azure, but input requires it if defined. 
-      # We can omit optional inputs.
     secrets: inherit
 
   plan-aws:
@@ -50,7 +43,6 @@ jobs:
       cloud_provider: aws
       working_directory: terraform/aws
       artifact_name: tfplan-aws
-      aws_region: ${{ inputs.aws_region }}
     secrets: inherit
 
   # ----------------------------
@@ -105,5 +97,4 @@ jobs:
       cloud_provider: aws
       working_directory: terraform/aws
       artifact_name: tfplan-aws
-      aws_region: ${{ inputs.aws_region }}
     secrets: inherit
