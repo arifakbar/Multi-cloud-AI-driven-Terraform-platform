@@ -24,6 +24,7 @@ class LLMGenerator:
 
     def generate_explanation(self, violation, rag_context):
         context_text = rag_context[0]["text"][:300] if rag_context else ""
+        issue_text = violation.get("message") or violation.get("issue") or "Unknown issue"
 
         prompt = f"""
 You are a cloud security expert reviewing Terraform infrastructure.
@@ -31,7 +32,7 @@ You are a cloud security expert reviewing Terraform infrastructure.
 Analyze ONLY the violation below.
 
 Resource: {violation['resource']}
-Issue: {violation['message']}
+Issue: {issue_text}
 Severity: {violation['severity']}
 
 Security guidance:
@@ -67,10 +68,6 @@ Answer:
             )
 
         decoded = self.tokenizer.decode(outputs[0], skip_special_tokens=True)
-
-        #Test output
-        print("LLM RAW OUTPUT:")
-        print(decoded[:500])
 
         response = decoded[len(prompt):].strip()
 
