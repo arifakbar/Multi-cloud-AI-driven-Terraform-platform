@@ -23,7 +23,7 @@ class LLMGenerator:
         self.model.eval()
 
     def generate_explanation(self, violation, rag_context):
-        context_text = rag_context[0]["text"][:200] if rag_context else ""
+        context_text = rag_context[0]["text"][:120] if rag_context else ""
         issue_text = violation.get("message") or violation.get("issue") or "Unknown issue"
 
         prompt = f"""
@@ -56,6 +56,8 @@ Important Rules:
 - Do NOT output markdown blocks
 - Do NOT invent new resources
 - Only describe the violation above
+
+Answer:
 """
 
         inputs = self.tokenizer(prompt, return_tensors="pt")
@@ -73,14 +75,9 @@ Important Rules:
 
         decoded = self.tokenizer.decode(outputs[0], skip_special_tokens=True)
 
-        response = decoded[len(prompt):]
-        response = response.replace("```", "")
-        response = response.replace("json", "")
-        response = response.strip()
+        response = decoded.split("Answer:")[-1].strip()
+        response = response.replace("```", "").replace("json", "").strip()
 
-        if "### END ANSWER" in response:
-            response = response.split("### END ANSWER")[0].strip()
-        
         if not response or len(response) < 10:
             return "AI explanation unavailable."
 
