@@ -23,13 +23,13 @@ class LLMGenerator:
         self.model.eval()
 
     def generate_explanation(self, violation, rag_context):
-        context_text = rag_context[0]["text"][:300] if rag_context else ""
+        context_text = rag_context[0]["text"][:250] if rag_context else ""
         issue_text = violation.get("message") or violation.get("issue") or "Unknown issue"
 
         prompt = f"""
-You are a cloud security expert reviewing Terraform infrastructure.
+You are a cloud security expert.
 
-Analyze ONLY the violation below.
+Analyze the Terraform security violation below.
 
 Resource: {violation['resource']}
 Issue: {issue_text}
@@ -38,20 +38,21 @@ Severity: {violation['severity']}
 Security guidance:
 {context_text}
 
-Instructions:
-- Explain ONLY this violation
-- Do NOT copy documentation
-- Do NOT create sections like "2. Public Access Block"
-- Be concise
-
-Respond using EXACTLY this format:
+Respond using ONLY the following format.
 
 Security Risk:
-Attack Scenario:
-Terraform Remediation:
-Compliance Reference:
+(one short paragraph)
 
-Answer:
+Attack Scenario:
+(one short paragraph)
+
+Terraform Remediation:
+(provide Terraform code only)
+
+Compliance Reference:
+(example: CIS AWS 3.2)
+
+Do not include markdown blocks, titles, or extra commentary.
 """
 
         inputs = self.tokenizer(prompt, return_tensors="pt")
@@ -59,9 +60,8 @@ Answer:
         with torch.no_grad():
             outputs = self.model.generate(
                 **inputs,
-                max_new_tokens=150,
+                max_new_tokens=120,
                 do_sample=False,
-                temperature=0.2,
                 repetition_penalty=1.2,
                 eos_token_id=self.tokenizer.eos_token_id,
                 pad_token_id=self.tokenizer.eos_token_id
@@ -70,6 +70,8 @@ Answer:
         decoded = self.tokenizer.decode(outputs[0], skip_special_tokens=True)
 
         response = decoded[len(prompt):].strip()
+        response = response.replace("```markdown", "")
+        response = response.replace("```", "")
 
         if "### END ANSWER" in response:
             response = response.split("### END ANSWER")[0].strip()
