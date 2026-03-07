@@ -23,36 +23,39 @@ class LLMGenerator:
         self.model.eval()
 
     def generate_explanation(self, violation, rag_context):
-        context_text = rag_context[0]["text"][:250] if rag_context else ""
+        context_text = rag_context[0]["text"][:200] if rag_context else ""
         issue_text = violation.get("message") or violation.get("issue") or "Unknown issue"
 
         prompt = f"""
-You are a cloud security expert.
+You are a cloud security expert analyzing Terraform infrastructure.
 
-Analyze the Terraform security violation below.
-
+Violation:
 Resource: {violation['resource']}
 Issue: {issue_text}
 Severity: {violation['severity']}
 
-Security guidance:
+Relevant guidance:
 {context_text}
 
-Respond using ONLY the following format.
+Provide a concise explanation using ONLY this format:
 
 Security Risk:
-(one short paragraph)
+(one short sentence)
 
 Attack Scenario:
-(one short paragraph)
+(one short sentence)
 
 Terraform Remediation:
-(provide Terraform code only)
+(valid Terraform code only)
 
 Compliance Reference:
 (example: CIS AWS 3.2)
 
-Do not include markdown blocks, titles, or extra commentary.
+Important Rules:
+- Do NOT output JSON
+- Do NOT output markdown blocks
+- Do NOT invent new resources
+- Only describe the violation above
 """
 
         inputs = self.tokenizer(prompt, return_tensors="pt")
@@ -60,8 +63,9 @@ Do not include markdown blocks, titles, or extra commentary.
         with torch.no_grad():
             outputs = self.model.generate(
                 **inputs,
-                max_new_tokens=120,
+                max_new_tokens=100,
                 do_sample=False,
+                temperature=0.1,
                 repetition_penalty=1.2,
                 eos_token_id=self.tokenizer.eos_token_id,
                 pad_token_id=self.tokenizer.eos_token_id
@@ -69,9 +73,10 @@ Do not include markdown blocks, titles, or extra commentary.
 
         decoded = self.tokenizer.decode(outputs[0], skip_special_tokens=True)
 
-        response = decoded[len(prompt):].strip()
-        response = response.replace("```markdown", "")
+        response = decoded[len(prompt):]
         response = response.replace("```", "")
+        response = response.replace("json", "")
+        response = response.strip()
 
         if "### END ANSWER" in response:
             response = response.split("### END ANSWER")[0].strip()
