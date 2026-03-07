@@ -68,9 +68,16 @@ Answer:
 
         decoded = self.tokenizer.decode(outputs[0], skip_special_tokens=True)
 
-        response = decoded.replace(prompt, "").strip()
+        #Test output
+        print("LLM RAW OUTPUT:")
+        print(decoded[:500])
+
+        response = decoded[len(prompt):].strip()
 
         if "### END ANSWER" in response:
             response = response.split("### END ANSWER")[0].strip()
+        
+        if not response or len(response) < 10:
+            return "AI explanation unavailable."
 
         return response
