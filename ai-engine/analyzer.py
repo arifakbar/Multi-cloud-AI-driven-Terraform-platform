@@ -40,8 +40,10 @@ def enrich_with_ai(violations):
             issue_text = v.get("issue") or v.get("message") or "security violation"
 
             query = (
-                f"{issue_text} {v.get('resource', '')} "
-                f"CIS compliance risk impact remediation"
+                f"{issue_text} "
+                f"{v.get('resource', '')} "
+                f"{v.get('severity', '')} "
+                f"CIS benchmark security risk remediation terraform"
             )
 
             log(f"Embedding query: {query}")
@@ -57,7 +59,10 @@ def enrich_with_ai(violations):
                 rag_context=rag_context
             )
 
-            # Keep RAG internally if needed — not required for CI output
+            if explanation:
+                explanation = explanation.split("### END ANSWER")[0]
+                explanation = explanation.strip()
+
             v["ai_explanation"] = explanation
 
         except Exception as e:

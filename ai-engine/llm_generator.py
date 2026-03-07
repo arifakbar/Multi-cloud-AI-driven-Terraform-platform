@@ -26,28 +26,35 @@ class LLMGenerator:
         context_text = "\n\n".join([c["text"] for c in rag_context])
 
         prompt = f"""
-You are a Principal Cloud Security Engineer reviewing Terraform infrastructure.
+You are a cloud security expert analyzing Terraform infrastructure.
 
-Return your response STRICTLY in the following Markdown format:
+Security Violation Detected:
 
-## Security Risk
-<clear explanation>
+Resource: {violation['resource']}
+Issue: {violation['issue']}
+Severity: {violation['severity']}
 
-## Compliance Impact
-<Mention CIS control if applicable>
+Context from security documentation:
+{rag_context}
 
-## Remediation Steps
-<step-by-step terraform fix>
+Explain the issue using the following format.
 
-Violation:
-Resource: {violation["resource"]}
-Issue: {violation["issue"]}
-Severity: {violation["severity"]}
+Security Risk:
+Explain why this configuration is dangerous.
 
-Security Context:
-{context_text}
+Attack Scenario:
+Describe how an attacker could exploit this misconfiguration.
 
-### START ANSWER
+Terraform Remediation:
+Provide ONLY the Terraform code required to fix the issue.
+Do not provide full files.
+Do not give console instructions.
+
+Compliance Reference:
+Mention any relevant CIS benchmark or security standard.
+
+End your response with:
+### END ANSWER
 """
 
         inputs = self.tokenizer(prompt, return_tensors="pt")
