@@ -26,34 +26,22 @@ class LLMGenerator:
         context_text = "\n\n".join([c["text"] for c in rag_context])
 
         prompt = f"""
-You are a cloud security expert analyzing Terraform infrastructure.
-
-Security Violation Detected:
+You are a cloud security expert reviewing Terraform infrastructure.
 
 Resource: {violation['resource']}
 Issue: {violation['issue']}
 Severity: {violation['severity']}
 
-Context from security documentation:
+Relevant security context:
 {rag_context}
 
-Explain the issue using the following format.
+Explain the security problem and provide a Terraform fix.
 
 Security Risk:
-Explain why this configuration is dangerous.
-
 Attack Scenario:
-Describe how an attacker could exploit this misconfiguration.
-
-Terraform Remediation:
-Provide ONLY the Terraform code required to fix the issue.
-Do not provide full files.
-Do not give console instructions.
-
+Terraform Remediation (Terraform code only):
 Compliance Reference:
-Mention any relevant CIS benchmark or security standard.
 
-End your response with:
 ### END ANSWER
 """
 
