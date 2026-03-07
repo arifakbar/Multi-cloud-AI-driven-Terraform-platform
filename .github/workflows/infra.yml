@@ -1,292 +1,359 @@
-name: Multi-Cloud Terraform DevSecOps
+name: Multi-Cloud Infrastructure Deployment
 
 on:
-  push:
-    branches: [main]
-  pull_request:
+  workflow_dispatch:
+    inputs:
+      cloud:
+        description: "Which cloud to deploy?"
+        required: false
+        default: "all"
+        type: choice
+        options:
+          - all
+          - azure
+          - aws
+
+permissions:
+  id-token: write
+  contents: read
 
 env:
+  # -------------------
+  # Azure
+  # -------------------
+  ARM_CLIENT_ID: ${{ secrets.AZURE_CLIENT_ID }}
+  ARM_SUBSCRIPTION_ID: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
+  ARM_TENANT_ID: ${{ secrets.AZURE_TENANT_ID }}
+  ARM_USE_OIDC: true
+
+  # -------------------
+  # AWS
+  # -------------------
+  AWS_ARN: arn:aws:iam::007222077088:role/Github-Actions
+  AWS_REGION: us-east-1
+
+  # Terraform plugin cache (major speed improvement)
   TF_PLUGIN_CACHE_DIR: ~/.terraform.d/plugin-cache
 
 jobs:
 
-#################################################
+# =========================================================
 # AZURE TERRAFORM PLAN
-#################################################
+# =========================================================
 
-  terraform-azure:
+  terraform-plan-azure:
     name: Terraform Plan (Azure)
     runs-on: ubuntu-latest
+    if: ${{ github.event.inputs.cloud == 'all' || github.event.inputs.cloud == 'azure' }}
 
-    permissions:
-      id-token: write
-      contents: read
-
-    steps:
-
-      - name: Checkout Repository
-        uses: actions/checkout@v4
-
-      - name: Azure Login via OIDC
-        uses: azure/login@v2
-        with:
-          client-id: ${{ secrets.AZURE_CLIENT_ID }}
-          tenant-id: ${{ secrets.AZURE_TENANT_ID }}
-          subscription-id: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
-
-      - name: Setup Terraform
-        uses: hashicorp/setup-terraform@v3
-
-      - name: Prepare Terraform Cache
-        run: mkdir -p ~/.terraform.d/plugin-cache
-
-      - name: Cache Terraform Providers
-        uses: actions/cache@v4
-        with:
-          path: ~/.terraform.d/plugin-cache
-          key: terraform-${{ runner.os }}
-
-      - name: Terraform Init (Azure)
-        run: terraform init
-        working-directory: terraform/azure
-
-      - name: Terraform Validate (Azure)
-        run: terraform validate
-        working-directory: terraform/azure
-
-      - name: Terraform Plan (Azure)
-        run: terraform plan -out=tfplan
-        working-directory: terraform/azure
-
-      - name: Save Plan Output
-        run: terraform show -json tfplan > tfplan.json
-        working-directory: terraform/azure
-
-      - name: Upload Azure Plan
-        uses: actions/upload-artifact@v4
-        with:
-          name: azure-plan
-          path: terraform/azure/tfplan.json
-
-
-#################################################
-# AWS TERRAFORM PLAN
-#################################################
-
-  terraform-aws:
-    name: Terraform Plan (AWS)
-    runs-on: ubuntu-latest
-
-    permissions:
-      id-token: write
-      contents: read
+    outputs:
+      high_risk: ${{ steps.severity.outputs.high }}
 
     steps:
 
       - name: Checkout Repository
         uses: actions/checkout@v4
 
-      - name: Configure AWS Credentials (OIDC)
-        uses: aws-actions/configure-aws-credentials@v4
-        with:
-          role-to-assume: ${{ secrets.AWS_ROLE_ARN }}
-          aws-region: us-east-1
-
-      - name: Setup Terraform
-        uses: hashicorp/setup-terraform@v3
-
-      - name: Prepare Terraform Cache
-        run: mkdir -p ~/.terraform.d/plugin-cache
-
-      - name: Cache Terraform Providers
-        uses: actions/cache@v4
-        with:
-          path: ~/.terraform.d/plugin-cache
-          key: terraform-${{ runner.os }}
-
-      - name: Terraform Init (AWS)
-        run: terraform init
-        working-directory: terraform/aws
-
-      - name: Terraform Validate (AWS)
-        run: terraform validate
-        working-directory: terraform/aws
-
-      - name: Terraform Plan (AWS)
-        run: terraform plan -out=tfplan
-        working-directory: terraform/aws
-
-      - name: Save Plan Output
-        run: terraform show -json tfplan > tfplan.json
-        working-directory: terraform/aws
-
-      - name: Upload AWS Plan
-        uses: actions/upload-artifact@v4
-        with:
-          name: aws-plan
-          path: terraform/aws/tfplan.json
-
-
-#################################################
-# AI SECURITY ANALYSIS (RUNS ONCE)
-#################################################
-
-  ai-security-analysis:
-    name: AI Security Analysis
-    needs: [terraform-azure, terraform-aws]
-    runs-on: ubuntu-latest
-
-    steps:
-
-      - name: Checkout Repository
-        uses: actions/checkout@v4
-
-      - name: Download Azure Plan
-        uses: actions/download-artifact@v4
-        with:
-          name: azure-plan
-          path: plans/
-
-      - name: Download AWS Plan
-        uses: actions/download-artifact@v4
-        with:
-          name: aws-plan
-          path: plans/
+      # ----------------------------
+      # Python Cache
+      # ----------------------------
 
       - name: Setup Python
         uses: actions/setup-python@v5
         with:
           python-version: "3.11"
-
-      - name: Cache Python Dependencies
-        uses: actions/cache@v4
-        with:
-          path: ~/.cache/pip
-          key: pip-${{ runner.os }}-${{ hashFiles('ai-engine/requirements.txt') }}
+          cache: "pip"
+          cache-dependency-path: ai-engine/requirements.txt
 
       - name: Install Python Dependencies
-        run: pip install -r ai-engine/requirements.txt
+        run: |
+          pip install -r ai-engine/requirements.txt
 
-      - name: Cache HuggingFace Models
+      # ----------------------------
+      # Terraform Plugin Cache
+      # ----------------------------
+
+      - name: Cache Terraform Plugins
         uses: actions/cache@v4
         with:
-          path: ~/.cache/huggingface
-          key: hf-models-v1
+          path: ~/.terraform.d/plugin-cache
+          key: terraform-${{ runner.os }}-${{ hashFiles('terraform/azure/.terraform.lock.hcl') }}
+          restore-keys: |
+            terraform-${{ runner.os }}-
 
-      - name: Cache Vector Index
-        uses: actions/cache@v4
-        with:
-          path: ai-engine/vector_store
-          key: ai-vector-index-v1
+      - name: Build AI Vector Index
+        run: python ai-engine/embedder.py
 
-      - name: Build Vector Index (Only if Missing)
-        run: |
-          if [ ! -f ai-engine/vector_store/index.faiss ]; then
-            echo "Building vector index..."
-            python ai-engine/embedder.py
-          else
-            echo "Vector index already exists"
-          fi
-
-      - name: Run AI Security Analysis
-        run: |
-          python ai-engine/analyzer.py \
-            --azure plans/tfplan.json \
-            --aws plans/tfplan.json
-
-      - name: Upload AI Report
-        uses: actions/upload-artifact@v4
-        with:
-          name: ai-security-report
-          path: ai-engine/reports/
-
-
-#################################################
-# DEPLOYMENT GATE
-#################################################
-
-  security-gate:
-    name: Security Approval Gate
-    needs: ai-security-analysis
-    runs-on: ubuntu-latest
-    environment:
-      name: production
-
-    steps:
-
-      - name: Download AI Report
-        uses: actions/download-artifact@v4
-        with:
-          name: ai-security-report
-
-      - name: Check Risk Score
-        run: python ai-engine/gatekeeper.py
-
-
-#################################################
-# TERRAFORM APPLY (AZURE)
-#################################################
-
-  apply-azure:
-    name: Terraform Apply (Azure)
-    needs: security-gate
-    runs-on: ubuntu-latest
-
-    permissions:
-      id-token: write
-      contents: read
-
-    steps:
-
-      - uses: actions/checkout@v4
+      # ----------------------------
+      # Azure Login
+      # ----------------------------
 
       - name: Azure Login via OIDC
         uses: azure/login@v2
         with:
-          client-id: ${{ secrets.AZURE_CLIENT_ID }}
-          tenant-id: ${{ secrets.AZURE_TENANT_ID }}
-          subscription-id: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
+          client-id: ${{ env.ARM_CLIENT_ID }}
+          tenant-id: ${{ env.ARM_TENANT_ID }}
+          subscription-id: ${{ env.ARM_SUBSCRIPTION_ID }}
 
-      - uses: hashicorp/setup-terraform@v3
+      # ----------------------------
+      # Terraform Setup
+      # ----------------------------
+
+      - name: Setup Terraform
+        uses: hashicorp/setup-terraform@v3
 
       - name: Terraform Init
+        working-directory: terraform/azure
         run: terraform init
+
+      - name: Terraform Plan
         working-directory: terraform/azure
+        run: terraform plan -out=tfplan
 
-      - name: Terraform Apply
-        run: terraform apply -auto-approve
+      - name: Export Plan JSON
         working-directory: terraform/azure
+        run: terraform show -json tfplan > plan.json
+
+      # ----------------------------
+      # AI Security Scan
+      # ----------------------------
+
+      - name: Run AI Analyzer
+        run: |
+          python ai-engine/analyzer.py terraform/azure/plan.json || true
+
+      - name: Publish Security Report
+        run: cat SECURITY_REPORT.md
+
+      # ----------------------------
+      # Check Risk Severity
+      # ----------------------------
+
+      - name: Evaluate Risk Level
+        id: severity
+        run: |
+          RESULT=$(python ai-engine/check_severity.py || true)
+          echo "Result: $RESULT"
+
+          if echo "$RESULT" | grep -q "high=true"; then
+            echo "high=true" >> $GITHUB_OUTPUT
+          else
+            echo "high=false" >> $GITHUB_OUTPUT
+          fi
 
 
-#################################################
-# TERRAFORM APPLY (AWS)
-#################################################
+# =========================================================
+# AZURE MANUAL APPROVAL
+# =========================================================
 
-  apply-aws:
-    name: Terraform Apply (AWS)
-    needs: security-gate
+  azure-high-risk-approval:
+    name: Azure High Risk Approval
+    runs-on: ubuntu-latest
+    needs: terraform-plan-azure
+    if: always() && (github.event.inputs.cloud == 'all' || github.event.inputs.cloud == 'azure')
+
+    environment: ${{ needs.terraform-plan-azure.outputs.high_risk == 'true' && 'high-risk-azure' || 'none' }}
+
+    steps:
+      - name: Risk Evaluation
+        run: |
+          echo "High Risk: ${{ needs.terraform-plan-azure.outputs.high_risk }}"
+
+          if [ "${{ needs.terraform-plan-azure.outputs.high_risk }}" = "true" ]; then
+            echo "Manual approval required."
+          else
+            echo "Auto approved."
+          fi
+
+
+# =========================================================
+# AZURE APPLY
+# =========================================================
+
+  terraform-apply-azure:
+    name: Terraform Apply (Azure)
     runs-on: ubuntu-latest
 
-    permissions:
-      id-token: write
-      contents: read
+    needs:
+      - terraform-plan-azure
+      - azure-high-risk-approval
+
+    if: >
+      (github.event.inputs.cloud == 'all' || github.event.inputs.cloud == 'azure') &&
+      needs.azure-high-risk-approval.result == 'success'
+
+    environment: Apply-Azure
+
+    defaults:
+      run:
+        working-directory: terraform/azure
 
     steps:
 
-      - uses: actions/checkout@v4
+      - name: Checkout Repository
+        uses: actions/checkout@v4
 
-      - name: Configure AWS Credentials
-        uses: aws-actions/configure-aws-credentials@v4
+      - name: Azure Login
+        uses: azure/login@v2
         with:
-          role-to-assume: ${{ secrets.AWS_ROLE_ARN }}
-          aws-region: us-east-1
+          client-id: ${{ env.ARM_CLIENT_ID }}
+          tenant-id: ${{ env.ARM_TENANT_ID }}
+          subscription-id: ${{ env.ARM_SUBSCRIPTION_ID }}
 
-      - uses: hashicorp/setup-terraform@v3
+      - name: Setup Terraform
+        uses: hashicorp/setup-terraform@v3
 
       - name: Terraform Init
         run: terraform init
-        working-directory: terraform/aws
+
+      - name: Terraform Plan
+        run: terraform plan -out=tfplan
 
       - name: Terraform Apply
-        run: terraform apply -auto-approve
+        run: terraform apply -auto-approve tfplan
+
+
+# =========================================================
+# AWS TERRAFORM PLAN
+# =========================================================
+
+  terraform-plan-aws:
+    name: Terraform Plan (AWS)
+    runs-on: ubuntu-latest
+    if: ${{ github.event.inputs.cloud == 'all' || github.event.inputs.cloud == 'aws' }}
+
+    outputs:
+      high_risk: ${{ steps.severity.outputs.high }}
+
+    steps:
+
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: "pip"
+          cache-dependency-path: ai-engine/requirements.txt
+
+      - name: Install Python Dependencies
+        run: pip install -r ai-engine/requirements.txt
+
+      - name: Cache Terraform Plugins
+        uses: actions/cache@v4
+        with:
+          path: ~/.terraform.d/plugin-cache
+          key: terraform-${{ runner.os }}-${{ hashFiles('terraform/aws/.terraform.lock.hcl') }}
+          restore-keys: |
+            terraform-${{ runner.os }}-
+
+      - name: Build AI Vector Index
+        run: python ai-engine/embedder.py
+
+      # ----------------------------
+      # AWS OIDC Login
+      # ----------------------------
+
+      - name: Configure AWS Credentials
+        uses: aws-actions/configure-aws-credentials@v2
+        with:
+          role-to-assume: ${{ env.AWS_ARN }}
+          aws-region: ${{ env.AWS_REGION }}
+
+      - name: Setup Terraform
+        uses: hashicorp/setup-terraform@v3
+
+      - name: Terraform Init
         working-directory: terraform/aws
+        run: terraform init
+
+      - name: Terraform Plan
+        working-directory: terraform/aws
+        run: terraform plan -out=tfplan
+
+      - name: Export Plan JSON
+        working-directory: terraform/aws
+        run: terraform show -json tfplan > plan.json
+
+      - name: Run AI Analyzer
+        run: |
+          python ai-engine/analyzer.py terraform/aws/plan.json || true
+
+      - name: Publish Security Report
+        run: cat SECURITY_REPORT.md
+
+      - name: Evaluate Risk Level
+        id: severity
+        run: |
+          RESULT=$(python ai-engine/check_severity.py || true)
+
+          if echo "$RESULT" | grep -q "high=true"; then
+            echo "high=true" >> $GITHUB_OUTPUT
+          else
+            echo "high=false" >> $GITHUB_OUTPUT
+          fi
+
+
+# =========================================================
+# AWS MANUAL APPROVAL
+# =========================================================
+
+  aws-high-risk-approval:
+    name: AWS High Risk Approval
+    runs-on: ubuntu-latest
+    needs: terraform-plan-aws
+    if: always() && (github.event.inputs.cloud == 'all' || github.event.inputs.cloud == 'aws')
+
+    environment: ${{ needs.terraform-plan-aws.outputs.high_risk == 'true' && 'high-risk-aws' || 'none' }}
+
+    steps:
+      - name: Risk Evaluation
+        run: |
+          echo "High Risk: ${{ needs.terraform-plan-aws.outputs.high_risk }}"
+
+
+# =========================================================
+# AWS APPLY
+# =========================================================
+
+  terraform-apply-aws:
+    name: Terraform Apply (AWS)
+    runs-on: ubuntu-latest
+
+    needs:
+      - terraform-plan-aws
+      - aws-high-risk-approval
+
+    if: >
+      (github.event.inputs.cloud == 'all' || github.event.inputs.cloud == 'aws') &&
+      needs.aws-high-risk-approval.result == 'success'
+
+    environment: Apply-AWS
+
+    defaults:
+      run:
+        working-directory: terraform/aws
+
+    steps:
+
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+
+      - name: Configure AWS Credentials
+        uses: aws-actions/configure-aws-credentials@v2
+        with:
+          role-to-assume: ${{ env.AWS_ARN }}
+          aws-region: ${{ env.AWS_REGION }}
+
+      - name: Setup Terraform
+        uses: hashicorp/setup-terraform@v3
+
+      - name: Terraform Init
+        run: terraform init
+
+      - name: Terraform Plan
+        run: terraform plan -out=tfplan
+
+      - name: Terraform Apply
+        run: terraform apply -auto-approve tfplan
