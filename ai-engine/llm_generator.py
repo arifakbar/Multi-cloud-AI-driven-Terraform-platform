@@ -23,7 +23,7 @@ class LLMGenerator:
         self.model.eval()
 
     def generate_explanation(self, violation, rag_context):
-        context_text = "\n\n".join([c["text"] for c in rag_context])
+        context_text = "\n\n".join([c["text"][:500] for c in rag_context[:2]])
 
         prompt = f"""
 You are a cloud security expert reviewing Terraform infrastructure.
@@ -33,9 +33,11 @@ Issue: {violation['issue']}
 Severity: {violation['severity']}
 
 Relevant security context:
-{rag_context}
+{context_text}
 
-Explain the security problem and provide a Terraform fix.
+Write a short analysis.
+
+### START ANSWER
 
 Security Risk:
 Attack Scenario:
@@ -57,11 +59,9 @@ Compliance Reference:
 
         decoded = self.tokenizer.decode(outputs[0], skip_special_tokens=True)
 
-        if "### START ANSWER" in decoded:
-            response = decoded.split("### START ANSWER")[-1].strip()
-        else:
-            response = decoded.replace(prompt, "").strip()
+        response = decoded.replace(prompt, "").strip()
 
-        response = response.replace(prompt, "").strip()
+        if "### END ANSWER" in response:
+            response = response.split("### END ANSWER")[0].strip()
 
         return response
