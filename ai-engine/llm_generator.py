@@ -23,7 +23,7 @@ class LLMGenerator:
         self.model.eval()
 
     def generate_explanation(self, violation, rag_context):
-        context_text = "\n\n".join([c["text"][:500] for c in rag_context[:2]])
+        context_text = rag_context[0]["text"][:300] if rag_context else ""
 
         prompt = f"""
 You are a cloud security expert reviewing Terraform infrastructure.
