@@ -23,11 +23,13 @@ class LLMGenerator:
         self.model.eval()
 
     def generate_explanation(self, violation, rag_context):
-        context_text = rag_context[0]["text"][:120] if rag_context else ""
+        context_text = rag_context[0]["text"][:100] if rag_context else ""
         issue_text = violation.get("message") or violation.get("issue") or "Unknown issue"
 
         prompt = f"""
 You are a cloud security expert analyzing Terraform infrastructure.
+
+Analyze the violation and produce a structured explanation.
 
 Violation:
 Resource: {violation['resource']}
@@ -37,37 +39,47 @@ Severity: {violation['severity']}
 Relevant guidance:
 {context_text}
 
-Provide a concise explanation using ONLY this format:
+Return EXACTLY the following sections.
 
 Security Risk:
-(one short sentence)
+(1 sentence describing the risk)
 
 Attack Scenario:
-(one short sentence)
+(1 sentence realistic attack)
 
 Terraform Remediation:
-(valid Terraform code only)
+(valid Terraform code fixing the issue)
 
 Compliance Reference:
 (example: CIS AWS 3.2)
 
-Important Rules:
-- Do NOT output JSON
-- Do NOT output markdown blocks
-- Do NOT invent new resources
-- Only describe the violation above
+Rules:
+- Only discuss the resource above
+- Do not invent EC2 or other services
+- Do not output markdown
+- Do not output explanations outside the format
 
 Answer:
 """
 
-        inputs = self.tokenizer(prompt, return_tensors="pt")
+        messages = [
+            {"role": "system", "content": "You are a precise cloud security expert. Follow the requested format exactly."},
+            {"role": "user", "content": prompt}
+        ]
+
+        inputs = self.tokenizer.apply_chat_template(
+            messages,
+            return_tensors="pt",
+            add_generation_prompt=True
+        )
 
         with torch.no_grad():
             outputs = self.model.generate(
                 **inputs,
-                max_new_tokens=100,
+                max_new_tokens=120,
                 do_sample=False,
-                temperature=0.1,
+                temperature=0,
+                top_p=0.9,
                 repetition_penalty=1.2,
                 eos_token_id=self.tokenizer.eos_token_id,
                 pad_token_id=self.tokenizer.eos_token_id
