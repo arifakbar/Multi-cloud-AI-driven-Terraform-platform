@@ -9,17 +9,17 @@ def check(resource):
 
     if after.get("allow_nested_items_to_be_public") is True:
         violations.append(
-            build_violation("high", "Azure Storage Account allows public blob access")
+            build_violation("high", "Azure Storage Account allows public blob access", "AZURE-STORAGE-001")
         )
 
     if after.get("min_tls_version") != "TLS1_2":
         violations.append(
-            build_violation("medium", "Storage account does not enforce TLS 1.2")
+            build_violation("medium", "Storage account does not enforce TLS 1.2", "AZURE-STORAGE-002")
         )
 
     if after.get("https_traffic_only_enabled") is False:
         violations.append(
-            build_violation("medium", "HTTPS traffic is not enforced")
+            build_violation("medium", "HTTPS traffic is not enforced", "AZURE-STORAGE-003")
         )
 
     return ensure_list(violations)

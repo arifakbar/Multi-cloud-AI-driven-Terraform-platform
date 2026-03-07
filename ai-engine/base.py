@@ -1,9 +1,10 @@
 # ai-engine/base.py
 
-def build_violation(severity: str, message: str):
+def build_violation(severity: str, issue: str, rule_id: str = None):
     return {
         "severity": severity,
-        "message": message
+        "issue": issue,
+        "rule_id": rule_id
     }
 
 
