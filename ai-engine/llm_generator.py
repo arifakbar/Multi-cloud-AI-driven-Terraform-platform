@@ -4,7 +4,7 @@ from transformers import AutoTokenizer, AutoModelForCausalLM
 
 MODEL_NAME = os.getenv(
     "LLM_MODEL",
-    "TinyLlama/TinyLlama-1.1B-Chat-v1.0"
+    "microsoft/Phi-3-mini-4k-instruct"
 )
 
 
@@ -58,7 +58,7 @@ Answer:
         with torch.no_grad():
             outputs = self.model.generate(
                 **inputs,
-                max_new_tokens=300,
+                max_new_tokens=150,
                 do_sample=False,
                 temperature=0.2,
                 repetition_penalty=1.2,

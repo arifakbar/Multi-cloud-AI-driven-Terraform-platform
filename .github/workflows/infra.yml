@@ -70,6 +70,18 @@ jobs:
           pip install -r ai-engine/requirements.txt
 
       # ----------------------------
+      # HuggingFace Model Cache
+      # ----------------------------
+
+      - name: Cache HuggingFace models
+        uses: actions/cache@v3
+        with:
+          path: ~/.cache/huggingface
+          key: hf-models-${{ runner.os }}
+          restore-keys: |
+            hf-models-          
+
+      # ----------------------------
       # Terraform Plugin Cache
       # ----------------------------
 
@@ -239,6 +251,14 @@ jobs:
 
       - name: Install Python Dependencies
         run: pip install -r ai-engine/requirements.txt
+
+      - name: Cache HuggingFace models
+        uses: actions/cache@v3
+        with:
+          path: ~/.cache/huggingface
+          key: hf-models-${{ runner.os }}
+          restore-keys: |
+            hf-models-       
 
       - name: Cache Terraform Plugins
         uses: actions/cache@v4
