@@ -35,7 +35,9 @@ Severity: {violation['severity']}
 Relevant security context:
 {context_text}
 
-Write a short analysis.
+Write a short analysis. 
+Focus only on the specific violation.
+Do not list multiple CIS sections.
 
 ### START ANSWER
 
