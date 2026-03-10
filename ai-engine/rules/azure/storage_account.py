@@ -7,7 +7,7 @@ def check(resource):
     after = resource.get("change", {}).get("after", {})
     violations = []
 
-    if after.get("allow_nested_items_to_be_public") is True:
+    if after.get("allow_blob_public_access") is True:
         violations.append(
             build_violation("high", "Azure Storage Account allows public blob access", "AZURE-STORAGE-001")
         )

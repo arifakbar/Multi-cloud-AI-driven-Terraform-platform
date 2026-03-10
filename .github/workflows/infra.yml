@@ -77,13 +77,13 @@ jobs:
       - name: Cache AI Vector Index
         uses: actions/cache@v4
         with:
-          path: ai-engine/vector_index
+          path: ai-engine/vector_store
           key: ai-index-${{ hashFiles('ai-engine/rules/**') }}
 
       - name: Build AI Vector Index
         run: |
           source ~/.venv/bin/activate
-          if [ ! -d "ai-engine/vector_index" ]; then
+          if [ ! -d "ai-engine/vector_store" ]; then
             echo "Building vector index..."
             python ai-engine/embedder.py
           else
@@ -275,13 +275,13 @@ jobs:
       - name: Cache AI Vector Index
         uses: actions/cache@v4
         with:
-          path: ai-engine/vector_index
+          path: ai-engine/vector_store
           key: ai-index-${{ hashFiles('ai-engine/rules/**') }}
 
       - name: Build AI Vector Index
         run: |
           source ~/.venv/bin/activate
-          if [ ! -d "ai-engine/vector_index" ]; then
+          if [ ! -d "ai-engine/vector_store" ]; then
             python ai-engine/embedder.py
           fi
 

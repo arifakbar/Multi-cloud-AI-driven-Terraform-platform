@@ -38,12 +38,11 @@ def enrich_with_ai(violations):
     for v in violations:
         try:
             issue_text = v.get("issue") or v.get("message") or "security violation"
+            rule_id = v.get("rule_id", "")
 
             query = (
-                f"{issue_text} "
-                f"{v.get('resource', '')} "
-                f"{v.get('severity', '')} "
-                f"CIS benchmark security risk remediation terraform"
+                f"{rule_id} {issue_text} "
+                f"CIS benchmark security risk remediation terraform argument"
             )
 
             log(f"Embedding query: {query}")
@@ -54,7 +53,8 @@ def enrich_with_ai(violations):
                 violation={
                     "resource": v.get("resource"),
                     "issue": issue_text,
-                    "severity": v.get("severity")
+                    "severity": v.get("severity"),
+                    "rule_id": rule_id  # Pass Rule ID to LLM
                 },
                 rag_context=rag_context
             )
@@ -95,15 +95,34 @@ def generate_markdown_report(results):
 
     report.append("---\n")
 
+    # GROUP violations by resource to avoid duplicates
+    resources = {}
     for v in results["violations"]:
-        sev = v["severity"].lower()
+        resource_name = v["resource"]
+        if resource_name not in resources:
+            resources[resource_name] = []
+        resources[resource_name].append(v)
+    
+    for resource_name, violations in resources.items():
+        report.append(f"## 🔍 {resource_name}\n")
+        
+        for i, v in enumerate(violations):
+            sev = v["severity"].lower()
+            
+            if len(violations) > 1:
+                report.append(f"### Issue {i + 1}: {v.get('message')}\n")
+            else:
+                report.append(f"**Issue:** {v.get('message')}\n")
+            
+            report.append(f"**Severity:** {severity_emoji.get(sev, sev.upper())}\n")
 
-        report.append(f"## 🔍 {v['resource']}")
-        report.append(f"**Severity:** {severity_emoji.get(sev, sev.upper())}")
-        report.append(f"**Issue:** {v.get('message')}\n")
-
-        report.append(v.get("ai_explanation", "No AI explanation available."))
-        report.append("\n---\n")
+            ai_exp = v.get("ai_explanation", "No AI explanation available.")
+            if ai_exp:
+                report.append(ai_exp)
+            
+            report.append("\n")
+        
+        report.append("---\n")
 
     return "\n".join(report)
 
