@@ -8,7 +8,7 @@ from llm_generator import LLMGenerator
 
 
 # Toggle debug logs (set to True locally if needed)
-DEBUG = False
+DEBUG = True
 
 
 def log(message):

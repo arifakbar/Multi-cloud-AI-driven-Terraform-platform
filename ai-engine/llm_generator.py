@@ -13,6 +13,7 @@ class LLMGenerator:
         print(f"Loading model: {MODEL_NAME}")
 
         self.tokenizer = AutoTokenizer.from_pretrained(MODEL_NAME)
+        self.tokenizer.pad_token = self.tokenizer.eos_token
 
         self.model = AutoModelForCausalLM.from_pretrained(
             MODEL_NAME,
@@ -23,7 +24,7 @@ class LLMGenerator:
         self.model.eval()
 
     def generate_explanation(self, violation, rag_context):
-        context_text = rag_context[0]["text"][:100] if rag_context else ""
+        context_text = rag_context[0]["text"][:500] if rag_context else ""
         issue_text = violation.get("message") or violation.get("issue") or "Unknown issue"
         
         prompt = f"""
@@ -62,7 +63,7 @@ Rules:
 Answer:
 """
 
-        inputs = self.tokenizer(prompt, return_tensors="pt")
+        inputs = self.tokenizer(prompt, return_tensors="pt", padding=True)
 
         with torch.no_grad():
             outputs = self.model.generate(
@@ -76,6 +77,8 @@ Answer:
             )
 
         decoded = self.tokenizer.decode(outputs[0], skip_special_tokens=True)
+
+        print("DEBUG MODEL OUTPUT:\n", decoded)
 
         response = decoded.split("Answer:")[-1].strip()
         response = response.replace("```", "").replace("json", "").strip()
