@@ -1,5 +1,4 @@
 import os
-from urllib import response
 import torch
 from transformers import AutoTokenizer, AutoModelForCausalLM
 
@@ -14,7 +13,6 @@ class LLMGenerator:
         print(f"Loading model: {MODEL_NAME}")
 
         self.tokenizer = AutoTokenizer.from_pretrained(MODEL_NAME)
-        self.tokenizer.pad_token = self.tokenizer.eos_token
 
         self.model = AutoModelForCausalLM.from_pretrained(
             MODEL_NAME,
@@ -25,16 +23,8 @@ class LLMGenerator:
         self.model.eval()
 
     def generate_explanation(self, violation, rag_context):
-        context_text = ""
-        if rag_context:
-            for ctx in rag_context[:2]:
-                context_text += ctx.get("text", "")[:300] + "\n\n"
-
+        context_text = rag_context[0]["text"][:400] if rag_context else ""
         issue_text = violation.get("message") or violation.get("issue") or "Unknown issue"
-        resource = violation.get("resource", "unknown")
-        severity = violation.get("severity", "low")
-
-        provider = "AWS" if "aws_" in resource else "Azure" if "azurerm_" in resource else "Cloud"
         
         prompt = f"""
 You are a cloud security expert analyzing Terraform infrastructure.
@@ -42,34 +32,35 @@ You are a cloud security expert analyzing Terraform infrastructure.
 Analyze the violation and produce a structured explanation.
 
 Violation:
-Resource: {resource}
+Resource: {violation['resource']}
 Issue: {issue_text}
-Severity: {severity.upper()}
+Severity: {violation['severity']}
 
 Relevant guidance:
 {context_text}
 
-Instructions:
-1. Explain the risk clearly.
-2. Provide valid Terraform HCL code to fix the issue.
-3. CRITICAL: Use ONLY official Terraform Provider argument names (e.g., 'enable_https_traffic_only', NOT 'enable_http_workload_security').
-4. Ensure code blocks are complete with closing braces.
-5. Do not truncate code.
+Return EXACTLY the following sections in new lines.
 
-Output Format:
-### Security Risk
-<Explanation>
+Security Risk:
+(1 sentence describing the risk)
 
-### Remediation
-<Explanation>
+Attack Scenario:
+(1 sentence realistic attack)
 
-### Terraform Code
-```hcl
-<Complete Code>
+Terraform Remediation:
+(valid Terraform code fixing the issue)
 
 Compliance Reference:
 (example: CIS AWS 3.2)
-Begin:"""
+
+Rules:
+- Only discuss the resource above
+- Do not invent other services
+- Do not output markdown
+- Do not output explanations outside the format
+
+Answer:
+"""
 
         inputs = self.tokenizer(prompt, return_tensors="pt")
 
@@ -86,16 +77,8 @@ Begin:"""
 
         decoded = self.tokenizer.decode(outputs[0], skip_special_tokens=True)
 
-        if "### Security Risk" in decoded:
-            response = decoded.split("### Security Risk")[1]
-        else:
-            response = decoded.split("Begin:")[-1].strip() if "Begin:" in decoded else decoded
-
-        response = response.strip()
-
-        if "```hcl" in response:
-            if response.count("```") % 2 != 0:
-                response += "\n```"
+        response = decoded.split("Answer:")[-1].strip()
+        response = response.replace("```", "").replace("json", "").strip()
 
         if not response or len(response) < 10:
             return "AI explanation unavailable."
