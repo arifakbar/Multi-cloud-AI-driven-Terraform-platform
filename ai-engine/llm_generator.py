@@ -23,7 +23,7 @@ class LLMGenerator:
         self.model.eval()
 
     def generate_explanation(self, violation, rag_context):
-        context_text = rag_context[0]["text"][:400] if rag_context else ""
+        context_text = rag_context[0]["text"][:100] if rag_context else ""
         issue_text = violation.get("message") or violation.get("issue") or "Unknown issue"
         
         prompt = f"""
