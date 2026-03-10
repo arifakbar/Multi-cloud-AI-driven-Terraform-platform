@@ -83,7 +83,7 @@ jobs:
       - name: Build AI Vector Index
         run: |
           source ~/.venv/bin/activate
-          if [ ! -d "ai-engine/vector_store" ]; then
+          if [ ! -f "ai-engine/vector_store/index.faiss" ] || [ ! -f "ai-engine/vector_store/metadata.pkl" ]; then
             echo "Building vector index..."
             python ai-engine/embedder.py
           else
@@ -281,7 +281,7 @@ jobs:
       - name: Build AI Vector Index
         run: |
           source ~/.venv/bin/activate
-          if [ ! -d "ai-engine/vector_store" ]; then
+          if [ ! -f "ai-engine/vector_store/index.faiss" ] || [ ! -f "ai-engine/vector_store/metadata.pkl" ]; then
             python ai-engine/embedder.py
           fi
 
