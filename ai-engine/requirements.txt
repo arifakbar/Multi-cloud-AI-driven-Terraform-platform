@@ -1,7 +1,0 @@
-requests
-transformers
-torch
-accelerate
-sentence-transformers
-faiss-cpu
-scikit-learn
