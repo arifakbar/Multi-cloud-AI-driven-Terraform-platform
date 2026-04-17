@@ -1,13 +1,14 @@
 import json
+from dotenv import load_dotenv
 
 from vector_store import create_vectorstore
 
 from langchain_groq import ChatGroq
 from langchain_core.messages import SystemMessage, HumanMessage
 
-GROQ_API_KEY='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'
-LLM_MODEL_NAME = 'qwen/qwen3-32b'
+load_dotenv()
 
+LLM_MODEL_NAME = 'qwen/qwen3-32b'
 
 def main():
     try:
@@ -20,8 +21,8 @@ def main():
     q = json.dumps(plan, indent=2)
 
     retriever = create_vectorstore().as_retriever()
-    llm = ChatGroq(api_key=GROQ_API_KEY, model_name=LLM_MODEL_NAME, reasoning_format='parsed')
-    llm2 = ChatGroq(api_key=GROQ_API_KEY, model_name=LLM_MODEL_NAME, reasoning_format='parsed')
+    llm = ChatGroq(model_name=LLM_MODEL_NAME, reasoning_format='parsed')
+    llm2 = ChatGroq(model_name=LLM_MODEL_NAME, reasoning_format='parsed')
 
     system_prompt = """
 You are a principal cloud security architect.
