@@ -7,7 +7,8 @@ def run_terraform():
             ["terraform", "init"],
             cwd="../terraform",
             text=True,
-            check=True
+            check=True,
+            capture_output=True
         )
         print("Terraform Init Completed\n")
 
@@ -17,6 +18,7 @@ def run_terraform():
             cwd="../terraform",
             text=True,
             check=True,
+            capture_output=True
         )
         print("Terraform Plan Completed\n")
 
@@ -28,6 +30,7 @@ def run_terraform():
                 stdout=f,  
                 text=True,
                 check=True,
+                capture_output=True
             )
 
         print("Terraform Plan Output Saved to JSON\n")
@@ -36,4 +39,5 @@ def run_terraform():
         print("Error running terraform:\n", e.stderr)
         return None
 
-run_terraform()
+if __name__ == "__main__":
+    run_terraform()
