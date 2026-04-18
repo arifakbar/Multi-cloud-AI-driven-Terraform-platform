@@ -42,6 +42,14 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
+      - name: Install Python & Dependencies
+        run : |
+          pip install --upgrade pip
+          pip install -r ai-engine/requirements.py
+      
+      - name: Build Vector Index
+        run: python ai-engine/vector_store.py
+
       - name: Azure Login
         uses: azure/login@v2
         with:
@@ -69,40 +77,40 @@ jobs:
 # Azure Apply
 # ----------------------------
 
-  terraform-apply-azure:
-    name: Terraform Apply (Azure)
-    runs-on: ubuntu-latest
-    needs:
-      - terraform-plan-azure
+  # terraform-apply-azure:
+  #   name: Terraform Apply (Azure)
+  #   runs-on: ubuntu-latest
+  #   needs:
+  #     - terraform-plan-azure
 
-    environment: Apply
+  #   environment: Apply
 
-    defaults:
-      run:
-        working-directory: terraform/azure
+  #   defaults:
+  #     run:
+  #       working-directory: terraform/azure
 
-    steps:
-      - name: Checkout
-        uses: actions/checkout@v4
+  #   steps:
+  #     - name: Checkout
+  #       uses: actions/checkout@v4
 
-      - name: Azure Login
-        uses: azure/login@v2
-        with:
-          client-id: ${{ secrets.AZURE_CLIENT_ID }}
-          tenant-id: ${{ secrets.AZURE_TENANT_ID }}
-          subscription-id: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
+  #     - name: Azure Login
+  #       uses: azure/login@v2
+  #       with:
+  #         client-id: 
+  #         tenant-id: 
+  #         subscription-id: 
 
-      - name: Setup Terraform
-        uses: hashicorp/setup-terraform@v3
+  #     - name: Setup Terraform
+  #       uses: hashicorp/setup-terraform@v3
 
-      - name: Terraform Init
-        run: terraform init
+  #     - name: Terraform Init
+  #       run: terraform init
 
-      - name: Terraform Plan
-        run: terraform plan -out=tfplan
+  #     - name: Terraform Plan
+  #       run: terraform plan -out=tfplan
 
-      - name: Terraform Apply
-        run: terraform apply -auto-approve tfplan
+  #     - name: Terraform Apply
+  #       run: terraform apply -auto-approve tfplan
 
 
 # ----------------------------
@@ -143,36 +151,36 @@ jobs:
 # AWS Apply
 # ----------------------------
 
-  terraform-apply-aws:
-    name: Terraform Apply (AWS)
-    runs-on: ubuntu-latest
+  # terraform-apply-aws:
+  #   name: Terraform Apply (AWS)
+  #   runs-on: ubuntu-latest
 
-    needs:
-      - terraform-plan-aws
-    environment: Apply-AWS
+  #   needs:
+  #     - terraform-plan-aws
+  #   environment: Apply-AWS
 
-    defaults:
-      run:
-        working-directory: terraform/aws
+  #   defaults:
+  #     run:
+  #       working-directory: terraform/aws
 
-    steps:
-      - name: Checkout
-        uses: actions/checkout@v4
+  #   steps:
+  #     - name: Checkout
+  #       uses: actions/checkout@v4
 
-      - name: Configure AWS Credentials via OIDC
-        uses: aws-actions/configure-aws-credentials@v2
-        with:
-          role-to-assume: ${{ env.AWS_ARN }}
-          aws-region: ${{ env.AWS_REGION }}
+  #     - name: Configure AWS Credentials via OIDC
+  #       uses: aws-actions/configure-aws-credentials@v2
+  #       with:
+  #         role-to-assume: 
+  #         aws-region: 
 
-      - name: Setup Terraform
-        uses: hashicorp/setup-terraform@v3
+  #     - name: Setup Terraform
+  #       uses: hashicorp/setup-terraform@v3
 
-      - name: Terraform Init
-        run: terraform init
+  #     - name: Terraform Init
+  #       run: terraform init
 
-      - name: Terraform Plan
-        run: terraform plan -out=tfplan
+  #     - name: Terraform Plan
+  #       run: terraform plan -out=tfplan
 
-      - name: Terraform Apply
-        run: terraform apply -auto-approve tfplan
+  #     - name: Terraform Apply
+  #       run: terraform apply -auto-approve tfplan
