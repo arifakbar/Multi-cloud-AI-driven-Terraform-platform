@@ -1,1 +1,178 @@
-#Pending
+name: Multi-Cloud Infrastructure Deployment
+
+on:
+  workflow_dispatch:
+    inputs:
+      cloud:
+        description: 'Which cloud to deploy?'
+        required: false
+        default: 'all'
+        type: choice
+        options:
+          - all
+          - azure
+          - aws
+
+permissions:
+  id-token: write
+  contents: read
+
+env:
+  # Azure
+  ARM_CLIENT_ID: ${{ secrets.AZURE_CLIENT_ID }}
+  ARM_SUBSCRIPTION_ID: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
+  ARM_TENANT_ID: ${{ secrets.AZURE_TENANT_ID }}
+  ARM_USE_OIDC: true
+
+  # AWS
+  AWS_ARN: arn:aws:iam::007222077088:role/Github-Actions
+  AWS_REGION: us-east-1
+
+# ----------------------------
+# Azure Terraform Plan
+# ----------------------------
+jobs:
+
+  terraform-plan-azure:
+    name: Terraform Plan (Azure)
+    runs-on: ubuntu-latest
+    if: ${{ github.event.inputs.cloud == 'all' || github.event.inputs.cloud == 'azure' }}
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Azure Login
+        uses: azure/login@v2
+        with:
+          client-id: ${{ secrets.AZURE_CLIENT_ID }}
+          tenant-id: ${{ secrets.AZURE_TENANT_ID }}
+          subscription-id: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
+
+      - name: Setup Terraform
+        uses: hashicorp/setup-terraform@v3
+
+      - name: Terraform Init
+        working-directory: terraform/azure
+        run: terraform init
+
+      - name: Terraform Plan
+        working-directory: terraform/azure
+        run: terraform plan -out=tfplan
+
+      - name: Export Plan JSON
+        working-directory: terraform/azure
+        run: terraform show -json tfplan > plan.json
+
+
+# ----------------------------
+# Azure Apply
+# ----------------------------
+
+  terraform-apply-azure:
+    name: Terraform Apply (Azure)
+    runs-on: ubuntu-latest
+    needs:
+      - terraform-plan-azure
+
+    environment: Apply
+
+    defaults:
+      run:
+        working-directory: terraform/azure
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Azure Login
+        uses: azure/login@v2
+        with:
+          client-id: ${{ secrets.AZURE_CLIENT_ID }}
+          tenant-id: ${{ secrets.AZURE_TENANT_ID }}
+          subscription-id: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
+
+      - name: Setup Terraform
+        uses: hashicorp/setup-terraform@v3
+
+      - name: Terraform Init
+        run: terraform init
+
+      - name: Terraform Plan
+        run: terraform plan -out=tfplan
+
+      - name: Terraform Apply
+        run: terraform apply -auto-approve tfplan
+
+
+# ----------------------------
+# AWS Terraform Plan
+# ----------------------------
+
+  terraform-plan-aws:
+    name: Terraform Plan (AWS)
+    runs-on: ubuntu-latest
+    if: ${{ github.event.inputs.cloud == 'all' || github.event.inputs.cloud == 'aws' }}
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Configure AWS Credentials via OIDC
+        uses: aws-actions/configure-aws-credentials@v2
+        with:
+          role-to-assume: ${{ env.AWS_ARN }}
+          aws-region: ${{ env.AWS_REGION }}
+
+      - name: Setup Terraform
+        uses: hashicorp/setup-terraform@v3
+
+      - name: Terraform Init
+        working-directory: terraform/aws
+        run: terraform init
+
+      - name: Terraform Plan
+        working-directory: terraform/aws
+        run: terraform plan -out=tfplan
+
+      - name: Export Plan JSON
+        working-directory: terraform/aws
+        run: terraform show -json tfplan > plan.json
+
+# ----------------------------
+# AWS Apply
+# ----------------------------
+
+  terraform-apply-aws:
+    name: Terraform Apply (AWS)
+    runs-on: ubuntu-latest
+
+    needs:
+      - terraform-plan-aws
+    environment: Apply-AWS
+
+    defaults:
+      run:
+        working-directory: terraform/aws
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Configure AWS Credentials via OIDC
+        uses: aws-actions/configure-aws-credentials@v2
+        with:
+          role-to-assume: ${{ env.AWS_ARN }}
+          aws-region: ${{ env.AWS_REGION }}
+
+      - name: Setup Terraform
+        uses: hashicorp/setup-terraform@v3
+
+      - name: Terraform Init
+        run: terraform init
+
+      - name: Terraform Plan
+        run: terraform plan -out=tfplan
+
+      - name: Terraform Apply
+        run: terraform apply -auto-approve tfplan
