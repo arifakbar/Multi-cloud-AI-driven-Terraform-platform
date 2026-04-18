@@ -6,7 +6,7 @@ from langchain_community.document_loaders import DirectoryLoader, TextLoader
 
 
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
-KB_PATH = os.path.join(BASE_DIR, "./knowledge-base")
+KB_PATH = os.path.join(BASE_DIR, "knowledge-base")
 
 
 def load_documents():
