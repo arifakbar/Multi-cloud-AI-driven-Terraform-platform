@@ -5,7 +5,8 @@ from langchain_chroma import Chroma
 
 from embedder import chunk_documents
 
-DB_NAME = "vector_db"
+BASE_DIR = os.path.dirname(os.path.abspath(__file__))
+DB_NAME = os.path.join(BASE_DIR, "vector_db")
 EMBEDDER_MODEL_NAME = "sentence-transformers/all-MiniLM-L6-v2"
 
 def create_vectorstore():
