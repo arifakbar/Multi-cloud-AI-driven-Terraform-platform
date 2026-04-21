@@ -18,7 +18,6 @@ def create_vectorstore():
 
         embeddings = HuggingFaceEmbeddings(model_name=EMBEDDER_MODEL_NAME)
 
-        # In CI, usually no need to delete — fresh environment
         vectore_store = Chroma.from_documents(
             chunks,
             embeddings,

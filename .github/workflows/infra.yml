@@ -18,6 +18,9 @@ permissions:
   contents: read
 
 env:
+  #LLM
+  GROQ_API_KEY: ${{secrets.GROQ_API_KEY}}
+
   # Azure
   ARM_CLIENT_ID: ${{ secrets.AZURE_CLIENT_ID }}
   ARM_SUBSCRIPTION_ID: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
@@ -72,6 +75,10 @@ jobs:
         working-directory: terraform/azure
         run: terraform show -json tfplan > plan.json
 
+      - name: Run AI Analyzer
+        id: analyzer
+        run: |
+         python ai-engine/main.py terraform/azure/plan.json
 
 # ----------------------------
 # Azure Apply
