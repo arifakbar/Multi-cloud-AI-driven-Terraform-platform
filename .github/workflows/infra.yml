@@ -60,7 +60,7 @@ jobs:
       - name: Debug requirements
         run: |
           ls ai-engine
-          cat ai-engine/requirements.txt
+          cat ai-engine/requirements.py
 
       - name: Install Python & Dependencies
         run : |
