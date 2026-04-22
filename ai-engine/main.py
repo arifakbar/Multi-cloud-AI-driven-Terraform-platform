@@ -27,12 +27,12 @@ def main():
         print(f"Error loading plan.json: {e}")
         return []
     
-    resource_types = [
-        r.get("type") for r in plan.get("resource_changes", [])
-    ]
-    q = " ".join(filter(None, resource_types))
+    # resource_types = [
+    #     r.get("type") for r in plan.get("resource_changes", [])
+    # ]
+    # q = " ".join(filter(None, resource_types))
 
-    # q = json.dumps(plan, indent=2)
+    q = json.dumps(plan, indent=2)
 
     if not os.path.exists(DB_NAME):
         raise ValueError(f"Vector DB not found at {DB_NAME}")
