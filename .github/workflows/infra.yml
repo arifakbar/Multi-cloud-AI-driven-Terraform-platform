@@ -45,13 +45,37 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
+      - name: Cache Python Dependencies
+        uses: actions/cache@v3
+        with: 
+          path: ~/.cache/pip
+          key: ${{ runner.os }}-pip-${{ hashFiles('ai-engine/requirements.py') }}
+      
+      - name: Cache Vector DB
+        uses: actions/cache@v3
+        with:
+          path: ai-engine/vector_db
+          key: ${{ runner.os }}-vectordb-${{ hashFiles('ai-engine/knowledge-base/**/*') }}
+
+      - name: Cache HuggingFace Models
+        uses: actions/cache@v3
+        with : 
+          path: ~/.cache/huggingface
+          key: ${{ runner.os }}-hf-${{ hashFiles('ai-engine/requirements.py') }}
+
       - name: Install Python & Dependencies
         run : |
           pip install --upgrade pip
           pip install -r ai-engine/requirements.py
       
       - name: Build Vector Index
-        run: python ai-engine/vector_store.py
+        run: |
+          if [! -d "ai_engine/vector_db"]; then
+            echo "Building Vector DB"
+            python ai-engine/vector_store.py
+          else
+            echo "Using cached vector DB"
+          fi
 
       - name: Azure Login
         uses: azure/login@v2
