@@ -70,7 +70,7 @@ jobs:
       
       - name: Build Vector Index
         run: |
-          if [! -d "ai_engine/vector_db"]; then
+          if [! -d "ai_engine/vector_db/chroma.sqlite3"]; then
             echo "Building Vector DB"
             python ai-engine/vector_store.py
           else
