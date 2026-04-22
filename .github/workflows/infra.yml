@@ -50,12 +50,23 @@ jobs:
         with: 
           path: ~/.cache/pip
           key: ${{ runner.os }}-pip-${{ hashFiles('ai-engine/requirements.txt') }}
+          restore-keys: |
+            ${{ runner.os }}-pip-
 
       - name: Cache HuggingFace Models
         uses: actions/cache@v3
         with : 
           path: ~/.cache/huggingface
           key: ${{ runner.os }}-hf-${{ hashFiles('ai-engine/requirements.txt') }}
+          restore-keys: |
+            ${{ runner.os }}-hf-
+      
+      - name: Cache Vector DB
+        id: cache-vectordb
+        uses: actions/cache@v3
+        with : 
+          path: ai-engine/vector_db
+          key: ${{ runner.os }}-vectordb-${{ hashFiles('ai-engine/knowledge-base/**/*') }}
 
       - name: Install Python & Dependencies
         run : |
@@ -63,6 +74,7 @@ jobs:
           pip install -r ai-engine/requirements.txt
       
       - name: Build Vector Index
+        if: steps.cache-vectordb.outputs.cache-hit != 'true'
         run: python ai-engine/vector_store.py
 
       - name: Azure Login
@@ -91,11 +103,6 @@ jobs:
         id: analyzer
         run: |
          python ai-engine/main.py terraform/azure/plan.json
-
-      - name: Debug requirements
-        run: |
-          ls ai-engine
-          cat ai-engine/requirements.txt
 
 # ----------------------------
 # Azure Apply
