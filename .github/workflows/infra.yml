@@ -50,12 +50,6 @@ jobs:
         with: 
           path: ~/.cache/pip
           key: ${{ runner.os }}-pip-${{ hashFiles('ai-engine/requirements.py') }}
-      
-      - name: Cache Vector DB
-        uses: actions/cache@v3
-        with:
-          path: ai-engine/vector_db
-          key: ${{ runner.os }}-vectordb-${{ hashFiles('ai-engine/knowledge-base/**/*') }}
 
       - name: Cache HuggingFace Models
         uses: actions/cache@v3
@@ -63,19 +57,18 @@ jobs:
           path: ~/.cache/huggingface
           key: ${{ runner.os }}-hf-${{ hashFiles('ai-engine/requirements.py') }}
 
+      - name: Debug requirements
+        run: |
+          ls ai-engine
+          cat ai-engine/requirements.txt
+
       - name: Install Python & Dependencies
         run : |
           pip install --upgrade pip
           pip install -r ai-engine/requirements.py
       
       - name: Build Vector Index
-        run: |
-          if [! -d "ai_engine/vector_db/chroma.sqlite3"]; then
-            echo "Building Vector DB"
-            python ai-engine/vector_store.py
-          else
-            echo "Using cached vector DB"
-          fi
+        run: python ai-engine/vector_store.py
 
       - name: Azure Login
         uses: azure/login@v2
