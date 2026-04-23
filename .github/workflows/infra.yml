@@ -194,6 +194,11 @@ jobs:
         working-directory: terraform/aws
         run: terraform show -json tfplan > plan.json
 
+      - name: Run AI Analyzer
+        id: analyzer
+        run: |
+         python ai-engine/main.py terraform/aws/plan.json
+
 # ----------------------------
 # AWS Apply
 # ----------------------------
