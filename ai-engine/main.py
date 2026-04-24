@@ -56,21 +56,21 @@ IMPORTANT:
 
 Return format:
 
-{
+{{
   "resources": [
-    {
+    {{
       "resource_name": "",
       "resource_type": "",
       "risks": [
-        {
+        {{
           "description": "",
           "severity": "low|medium|high",
           "recommendations": []
-        }
+        }}
       ]
-    }
+    }}
   ]
-}
+}}
 
 Plan:
 {context}
