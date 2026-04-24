@@ -26,11 +26,6 @@ def main():
     except Exception as e:
         print(f"Error loading plan.json: {e}")
         return []
-    
-    # resource_types = [
-    #     r.get("type") for r in plan.get("resource_changes", [])
-    # ]
-    # q = " ".join(filter(None, resource_types))
 
     q = json.dumps(plan, indent=2)
 
@@ -46,28 +41,36 @@ def main():
 
     system_prompt = """
 You are a principal cloud security architect.
-Analyze the Terraform plan summary below. And provide a risk assessment and recommendations for each risk.
-Do not provide any explanation for resources which are not present in the context. Only analyze the resources present in the context.
-You MUST respond ONLY in valid JSON.
-Do NOT include explanations.
-Do NOT include markdown.
-Do NOT include backticks.
-Return raw JSON only.
-Required format:
 
-Format:
+Analyze the Terraform plan and identify security risks.
 
-{{
+Rules:
+- Only analyze resources present in the context
+- Do NOT include explanations
+- Do NOT include markdown or backticks
+- Output MUST be valid JSON only
+
+IMPORTANT:
+- Group all risks under the same resource_name
+- Do NOT repeat resource entries
+
+Return format:
+
+{
   "resources": [
-    {{
+    {
       "resource_name": "",
       "resource_type": "",
-      "risk": "",
-      "severity": "low|medium|high",
-      "recommendations": []
-    }}
+      "risks": [
+        {
+          "description": "",
+          "severity": "low|medium|high",
+          "recommendations": []
+        }
+      ]
+    }
   ]
-}}
+}
 
 Plan:
 {context}
@@ -78,7 +81,21 @@ Plan:
     prompt = system_prompt.format(context=context)
     res = llm.invoke([SystemMessage(content=prompt),HumanMessage(content=q)])
     print(res.content)
-    res2 = llm2.invoke([SystemMessage(content=res.content),HumanMessage(content="Please provide the terraform code for the recommendations. Not the whole code, just the code snippets for the recommendations.")])
+    res2 = llm2.invoke([
+    SystemMessage(content="""
+You are a Terraform expert.
+
+You will receive a JSON object containing security risks.
+Your task is to generate ONLY Terraform code snippets that fix the issues.
+
+Rules:
+- Do NOT repeat full Terraform resources
+- Only output missing or required blocks
+- No explanations
+- No markdown
+"""),
+    HumanMessage(content=res.content)
+])
     print(res2.content)
     return res2.content
     
