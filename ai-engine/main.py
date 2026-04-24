@@ -99,7 +99,7 @@ Risk: {risk['description']}
 Generate ONLY Terraform code snippet to fix it.
 No explanations.
             """
-            fix = llm2.invoke([SystemMessage(content=prompt), HumanMessage(content=risk)])
+            fix = llm2.invoke([SystemMessage(content=prompt), HumanMessage(content=risk["description"])])
             enriched_risks.append(
                 {
                     **risk,
