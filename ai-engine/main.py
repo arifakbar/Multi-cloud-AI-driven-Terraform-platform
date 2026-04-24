@@ -82,7 +82,7 @@ Plan:
     res = llm.invoke([SystemMessage(content=prompt),HumanMessage(content=q)])
     # print(res.content)
     final_op = []
-    for resource in res["resources"]:
+    for resource in res.content["resources"]:
         enriched_risks = []
 
         for risk in resource["risks"]:
