@@ -111,7 +111,7 @@ No explanations.
             "resource_type": resource["resource_type"],
             "risks": enriched_risks
         }) 
-
+    print(final_op)
     return final_op
     
 if __name__ == "__main__":
