@@ -80,24 +80,38 @@ Plan:
     context = "\n\n".join(d.page_content for d in docs)
     prompt = system_prompt.format(context=context)
     res = llm.invoke([SystemMessage(content=prompt),HumanMessage(content=q)])
-    print(res.content)
-    res2 = llm2.invoke([
-    SystemMessage(content="""
+    # print(res.content)
+    final_op = []
+    for resource in res["resources"]:
+        enriched_risks = []
+
+        for risk in resource["risks"]:
+            prompt = f"""
 You are a Terraform expert.
 
-You will receive a JSON object containing security risks.
-Your task is to generate ONLY Terraform code snippets that fix the issues.
+Fix this security issue:
 
-Rules:
-- Do NOT repeat full Terraform resources
-- Only output missing or required blocks
-- No explanations
-- No markdown
-"""),
-    HumanMessage(content=res.content)
-])
-    print(res2.content)
-    return res2.content
+Resource: {resource['resource_name']}
+Type: {resource['resource_type']}
+Risk: {risk['description']}
+
+Generate ONLY Terraform code snippet to fix it.
+No explanations.
+            """
+            fix = llm2.invoke([SystemMessage(content=prompt), HumanMessage(content=risk)])
+            enriched_risks.append(
+                {
+                    **risk,
+                    "fix":fix.content
+                    }
+            )
+        final_op.append({
+            "resource_name": resource["resource_name"],
+            "resource_type": resource["resource_type"],
+            "risks": enriched_risks
+        }) 
+
+    return final_op
     
 if __name__ == "__main__":
     main()
