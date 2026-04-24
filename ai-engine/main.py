@@ -81,8 +81,9 @@ Plan:
     prompt = system_prompt.format(context=context)
     res = llm.invoke([SystemMessage(content=prompt),HumanMessage(content=q)])
     # print(res.content)
+    data = json.loads(res.content)
     final_op = []
-    for resource in res.content["resources"]:
+    for resource in data["resources"]:
         enriched_risks = []
 
         for risk in resource["risks"]:
