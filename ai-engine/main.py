@@ -109,7 +109,7 @@ No explanations.
             enriched_risks.append(
                 {
                     **risk,
-                    "fix":fix.content.strip()
+                    "fix":fix.content.strip().split("\n")
                     }
             )
         final_op.append({
