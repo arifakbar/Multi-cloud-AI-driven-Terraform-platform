@@ -88,9 +88,15 @@ Plan:
 
         for risk in resource["risks"]:
             prompt = f"""
-You are a Terraform expert.
+Return ONLY raw Terraform code.
 
-Fix this security issue:
+Rules:
+- Do NOT use markdown
+- Do NOT wrap in ```hcl
+- Do NOT add explanations
+- Do NOT repeat full Terraform resources
+- Only output missing or required blocks to fix the issue.
+- Output must be valid Terraform snippet only
 
 Resource: {resource['resource_name']}
 Type: {resource['resource_type']}
@@ -103,7 +109,7 @@ No explanations.
             enriched_risks.append(
                 {
                     **risk,
-                    "fix":fix.content
+                    "fix":fix.content.strip()
                     }
             )
         final_op.append({
@@ -111,7 +117,7 @@ No explanations.
             "resource_type": resource["resource_type"],
             "risks": enriched_risks
         }) 
-    print(final_op)
+    print(json.dumps(final_op, indent=2))
     return final_op
     
 if __name__ == "__main__":
