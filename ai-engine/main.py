@@ -115,10 +115,19 @@ Return format:
     fix_data = json.loads(res2.content)
     risk_data = json.loads(res.content)
 
-    print(risk_data)
-    print(fix_data)
+    fix_lookup = {
+        f["risk_id"]: f["fix"]
+        for f in fix_data["fixes"]
+    }
 
-    return []
+    for resource in risk_data["resources"]:
+        for risk in resource["risks"]:
+            fix = fix_lookup.get(risk["risk_id"], "")
+            risk["fix"] = fix.strip().split("\n") if fix else []
+
+    print(json.dumps(risk_data, indent=2))
+
+    return risk_data
     
 if __name__ == "__main__":
     main()
