@@ -80,45 +80,37 @@ Plan:
     context = "\n\n".join(d.page_content for d in docs)
     prompt = system_prompt.format(context=context)
     res = llm.invoke([SystemMessage(content=prompt),HumanMessage(content=q)])
-    # print(res.content)
-    data = json.loads(res.content)
-    final_op = []
-    for resource in data["resources"]:
-        enriched_risks = []
+    print(res.content)
+    res2 = llm2.invoke([
+    SystemMessage(content="""
+You are a Terraform expert.
 
-        for risk in resource["risks"]:
-            prompt = f"""
-Return ONLY raw Terraform code.
+You will receive a JSON object containing security risks.
+Your task is to generate ONLY Terraform code snippets that fix the issues.
 
 Rules:
-- Do NOT use markdown
-- Do NOT wrap in ```hcl
-- Do NOT add explanations
 - Do NOT repeat full Terraform resources
-- Only output missing or required blocks to fix the issue.
-- Output must be valid Terraform snippet only
+- Only output missing or required blocks
+- No explanations
+- No markdowns
+                  
+Return format:
 
-Resource: {resource['resource_name']}
-Type: {resource['resource_type']}
-Risk: {risk['description']}
-
-Generate ONLY Terraform code snippet to fix it.
-No explanations.
-            """
-            fix = llm2.invoke([SystemMessage(content=prompt), HumanMessage(content=risk["description"])])
-            enriched_risks.append(
-                {
-                    **risk,
-                    "fix":fix.content.strip().split("\n")
-                    }
-            )
-        final_op.append({
-            "resource_name": resource["resource_name"],
-            "resource_type": resource["resource_type"],
-            "risks": enriched_risks
-        }) 
-    print(json.dumps(final_op, indent=2))
-    return final_op
+{{
+  "fixes": [
+    {{
+      "resource_name": "",
+      "risk": "",
+      "fix": ""
+    }}
+  ]
+}}
+                  
+"""),
+    HumanMessage(content=res.content)
+])
+    print(res2.content)
+    return res2.content
     
 if __name__ == "__main__":
     main()
