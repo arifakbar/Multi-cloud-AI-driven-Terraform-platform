@@ -123,7 +123,11 @@ Return format:
     for resource in risk_data["resources"]:
         for risk in resource["risks"]:
             fix = fix_lookup.get(risk["risk_id"], "")
-            risk["fix"] = fix.strip().split("\n") if fix else []
+            if fix:
+                clean_fix = fix.encode().decode("unicode_escape")
+                risk["fix"] = clean_fix.strip().split("\n")
+            else:
+                risk["fix"] = []
 
     print(json.dumps(risk_data, indent=2))
 
