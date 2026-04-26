@@ -63,6 +63,7 @@ Return format:
       "resource_type": "",
       "risks": [
         {{
+          "risk_id":"risk_1",
           "description": "",
           "severity": "low|medium|high",
           "recommendations": []
@@ -80,7 +81,7 @@ Plan:
     context = "\n\n".join(d.page_content for d in docs)
     prompt = system_prompt.format(context=context)
     res = llm.invoke([SystemMessage(content=prompt),HumanMessage(content=q)])
-    print(res.content)
+
     res2 = llm2.invoke([
     SystemMessage(content="""
 You are a Terraform expert.
@@ -100,6 +101,7 @@ Return format:
   "fixes": [
     {{
       "resource_name": "",
+      "risk_id":"risk_1",
       "risk": "",
       "fix": ""
     }}
@@ -109,8 +111,14 @@ Return format:
 """),
     HumanMessage(content=res.content)
 ])
-    print(res2.content)
-    return res2.content
+    
+    fix_data = json.loads(res2.content)
+    risk_data = json.loads(res.content)
+
+    print(risk_data)
+    print(fix_data)
+
+    return []
     
 if __name__ == "__main__":
     main()
