@@ -7,6 +7,8 @@ from langchain_core.messages import SystemMessage, HumanMessage
 from langchain_huggingface import HuggingFaceEmbeddings
 from langchain_chroma import Chroma
 
+from prompts import rag_system_prompt, llm_system_prompt
+
 GROQ_API_KEY = os.getenv("GROQ_API_KEY")
 
 LLM_MODEL_NAME = 'qwen/qwen3-32b'
@@ -39,76 +41,13 @@ def main():
     llm = ChatGroq(api_key=GROQ_API_KEY, model_name=LLM_MODEL_NAME, reasoning_format='parsed')
     llm2 = ChatGroq(api_key=GROQ_API_KEY, model_name=LLM_MODEL_NAME, reasoning_format='parsed')
 
-    system_prompt = """
-You are a principal cloud security architect.
-
-Analyze the Terraform plan and identify security risks.
-
-Rules:
-- Only analyze resources present in the context
-- Do NOT include explanations
-- Do NOT include markdown or backticks
-- Output MUST be valid JSON only
-
-IMPORTANT:
-- Group all risks under the same resource_name
-- Do NOT repeat resource entries
-
-Return format:
-
-{{
-  "resources": [
-    {{
-      "resource_name": "",
-      "resource_type": "",
-      "risks": [
-        {{
-          "risk_id":"risk_1",
-          "description": "",
-          "severity": "low|medium|high",
-          "recommendations": []
-        }}
-      ]
-    }}
-  ]
-}}
-
-Plan:
-{context}
-"""
-
     docs = retriever.invoke(q)
     context = "\n\n".join(d.page_content for d in docs)
-    prompt = system_prompt.format(context=context)
+    prompt = rag_system_prompt.format(context=context)
     res = llm.invoke([SystemMessage(content=prompt),HumanMessage(content=q)])
 
     res2 = llm2.invoke([
-    SystemMessage(content="""
-You are a Terraform expert.
-
-You will receive a JSON object containing security risks.
-Your task is to generate ONLY Terraform code snippets that fix the issues.
-
-Rules:
-- Do NOT repeat full Terraform resources
-- Only output missing or required blocks
-- No explanations
-- No markdowns
-                  
-Return format:
-
-{{
-  "fixes": [
-    {{
-      "resource_name": "",
-      "risk_id":"risk_1",
-      "risk": "",
-      "fix": ""
-    }}
-  ]
-}}
-                  
-"""),
+    SystemMessage(content=llm_system_prompt),
     HumanMessage(content=res.content)
 ])
     
