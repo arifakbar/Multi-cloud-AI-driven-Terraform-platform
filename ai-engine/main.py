@@ -16,6 +16,28 @@ BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 DB_NAME = os.path.join(BASE_DIR, "vector_db")
 EMBEDDER_MODEL_NAME = "sentence-transformers/all-MiniLM-L6-v2"
 
+def combined_output(res, res2):
+  fix_data = json.loads(res2.content)
+  risk_data = json.loads(res.content)
+
+  fix_lookup = {
+      f["risk_id"]: f["fix"]
+      for f in fix_data["fixes"]
+  }
+
+  for resource in risk_data.get("resources", []):
+      for risk in resource.get("risks", []):
+          fix = fix_lookup.get(risk["risk_id"], "")
+          if fix:
+              clean_fix = bytes(fix, "utf-8").decode("unicode_escape")
+              risk["fix"] = clean_fix.strip().split("\n")
+          else:
+              risk["fix"] = []
+
+  print(json.dumps(risk_data, indent=2))
+
+  return risk_data
+
 def main():
     
     if not GROQ_API_KEY:
@@ -27,7 +49,7 @@ def main():
             plan = json.load(f)
     except Exception as e:
         print(f"Error loading plan.json: {e}")
-        return []
+        sys.exit(1)
 
     q = json.dumps(plan, indent=2)
 
@@ -39,38 +61,19 @@ def main():
 
     retriever = vector_store.as_retriever(search_kwargs={"k": 8})
     llm = ChatGroq(api_key=GROQ_API_KEY, model_name=LLM_MODEL_NAME, reasoning_format='parsed')
-    llm2 = ChatGroq(api_key=GROQ_API_KEY, model_name=LLM_MODEL_NAME, reasoning_format='parsed')
 
     docs = retriever.invoke(q)
     context = "\n\n".join(d.page_content for d in docs)
     prompt = rag_system_prompt.format(context=context)
+    
     res = llm.invoke([SystemMessage(content=prompt),HumanMessage(content=q)])
 
-    res2 = llm2.invoke([
+    res2 = llm.invoke([
     SystemMessage(content=llm_system_prompt),
     HumanMessage(content=res.content)
 ])
     
-    fix_data = json.loads(res2.content)
-    risk_data = json.loads(res.content)
-
-    fix_lookup = {
-        f["risk_id"]: f["fix"]
-        for f in fix_data["fixes"]
-    }
-
-    for resource in risk_data["resources"]:
-        for risk in resource["risks"]:
-            fix = fix_lookup.get(risk["risk_id"], "")
-            if fix:
-                clean_fix = fix.encode().decode("unicode_escape")
-                risk["fix"] = clean_fix.strip().split("\n")
-            else:
-                risk["fix"] = []
-
-    print(json.dumps(risk_data, indent=2))
-
-    return risk_data
+    return combined_output(res, res2)
     
 if __name__ == "__main__":
     main()
