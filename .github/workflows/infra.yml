@@ -146,6 +146,7 @@ jobs:
     runs-on: ubuntu-latest
     needs:
       - terraform-plan-azure
+      - azure-high-risk-approval
 
     environment: Apply
 
@@ -290,6 +291,8 @@ jobs:
 
     needs:
       - terraform-plan-aws
+      - aws-high-risk-approval
+      
     environment: Apply-AWS
 
     defaults:
