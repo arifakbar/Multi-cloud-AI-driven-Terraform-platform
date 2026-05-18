@@ -208,7 +208,7 @@ jobs:
 
       - name: Publish Report
         run: |
-          cat SECURITY_REPORT.md >> $GITHUB_STEP_SUMMARY
+          cat SECURITY_REPORT.md
 
 # ----------------------------
 # AWS Apply

@@ -5,15 +5,8 @@ def publish_report(data):
     medium_count = 0
     low_count = 0
 
-    report = []
-
-    report.append("# Terraform Security Analysis Report\n")
-
+    # First pass: count severities
     for resource in data.get("resources", []):
-
-        report.append(f"## Resource: {resource['resource_name']}")
-        report.append(f"**Type:** {resource['resource_type']}\n")
-
         for risk in resource.get("risks", []):
 
             severity = risk.get("severity", "unknown").lower()
@@ -27,11 +20,46 @@ def publish_report(data):
             elif severity == "low":
                 low_count += 1
 
+    approval_required = high_count > 0
+
+    result = {
+        "high_severity_count": high_count,
+        "medium_severity_count": medium_count,
+        "low_severity_count": low_count,
+        "approval_required": approval_required
+    }
+
+    # Start markdown report
+    report = []
+
+    report.append("# Terraform Security Analysis Report\n")
+
+    # Summary Section
+    report.append("## Security Summary\n")
+
+    report.append(f"- High Severity Issues: **{high_count}**")
+    report.append(f"- Medium Severity Issues: **{medium_count}**")
+    report.append(f"- Low Severity Issues: **{low_count}**")
+    report.append(f"- Approval Required: **{approval_required}**")
+
+    report.append("\n---\n")
+
+    # Detailed Findings
+    for resource in data.get("resources", []):
+
+        report.append(f"## Resource: {resource['resource_name']}")
+        report.append(f"**Type:** {resource['resource_type']}\n")
+
+        for risk in resource.get("risks", []):
+
+            severity = risk.get("severity", "unknown").lower()
+
             report.append(f"### {risk['risk_id']}")
             report.append(f"- Severity: **{severity.upper()}**")
             report.append(f"- Description: {risk['description']}\n")
 
             report.append("#### Recommendations")
+
             for r in risk.get("recommendations", []):
                 report.append(f"- {r}")
 
@@ -42,17 +70,11 @@ def publish_report(data):
 
             report.append("\n---\n")
 
-    # Save markdown file
+    # Write markdown file
     with open("SECURITY_REPORT.md", "w", encoding="utf-8") as file:
         file.write("\n".join(report))
 
-    approval_required = high_count > 0
-
-    result = {
-        "high_severity_count": high_count,
-        "medium_severity_count": medium_count,
-        "low_severity_count": low_count,
-        "approval_required": approval_required
-    }
+    print("\n=== SECURITY SUMMARY ===")
+    print(json.dumps(result, indent=2))
 
     return result
