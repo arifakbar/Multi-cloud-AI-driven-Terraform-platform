@@ -41,9 +41,6 @@ jobs:
     runs-on: ubuntu-latest
     if: ${{ github.event.inputs.cloud == 'all' || github.event.inputs.cloud == 'azure' }}
 
-    outputs:
-      high_risk: ${{steps.severity.outputs.high}}
-
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -156,14 +153,6 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
-      - name: Cache Python Dependencies
-        uses: actions/cache@v3
-        with: 
-          path: ~/.cache/pip
-          key: ${{ runner.os }}-pip-${{ hashFiles('ai-engine/requirements.txt') }}
-          restore-keys: |
-            ${{ runner.os }}-pip-
-
       - name: Cache HuggingFace Models
         uses: actions/cache@v3
         with : 
@@ -172,11 +161,17 @@ jobs:
           restore-keys: |
             ${{ runner.os }}-hf-
 
-      - name: Install Python & Dependencies
-        run : |
-          pip install --upgrade pip
-          pip install -r ai-engine/requirements.txt
-      
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+          cache: 'pip'
+          cache-dependency-path: ai-engine/requirements.txt
+
+      - name: Install Dependencies
+        run: |
+          python -m pip install -r ai-engine/requirements.txt
+
       - name: Build Vector Index
         run: python ai-engine/vector_store.py
 

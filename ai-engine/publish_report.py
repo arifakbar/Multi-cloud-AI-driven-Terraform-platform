@@ -44,31 +44,31 @@ def publish_report(data):
 
     report.append("\n---\n")
 
-    # Detailed Findings
-    for resource in data.get("resources", []):
+    # # Detailed Findings
+    # for resource in data.get("resources", []):
 
-        report.append(f"## Resource: {resource['resource_name']}")
-        report.append(f"**Type:** {resource['resource_type']}\n")
+    #     report.append(f"## Resource: {resource['resource_name']}")
+    #     report.append(f"**Type:** {resource['resource_type']}\n")
 
-        for risk in resource.get("risks", []):
+    #     for risk in resource.get("risks", []):
 
-            severity = risk.get("severity", "unknown").lower()
+    #         severity = risk.get("severity", "unknown").lower()
 
-            report.append(f"### {risk['risk_id']}")
-            report.append(f"- Severity: **{severity.upper()}**")
-            report.append(f"- Description: {risk['description']}\n")
+    #         report.append(f"### {risk['risk_id']}")
+    #         report.append(f"- Severity: **{severity.upper()}**")
+    #         report.append(f"- Description: {risk['description']}\n")
 
-            report.append("#### Recommendations")
+    #         report.append("#### Recommendations")
 
-            for r in risk.get("recommendations", []):
-                report.append(f"- {r}")
+    #         for r in risk.get("recommendations", []):
+    #             report.append(f"- {r}")
 
-            report.append("\n#### Fix")
+    #         report.append("\n#### Fix")
 
-            for f in risk.get("fix", []):
-                report.append(f"```hcl\n{f}\n```")
+    #         for f in risk.get("fix", []):
+    #             report.append(f"```hcl\n{f}\n```")
 
-            report.append("\n---\n")
+    report.append("\n---\n")
 
     # Write markdown file
     with open("SECURITY_REPORT.md", "w", encoding="utf-8") as file:
