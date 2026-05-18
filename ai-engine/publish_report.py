@@ -74,7 +74,4 @@ def publish_report(data):
     with open("SECURITY_REPORT.md", "w", encoding="utf-8") as file:
         file.write("\n".join(report))
 
-    print("\n=== SECURITY SUMMARY ===")
-    print(json.dumps(result, indent=2))
-
     return result
