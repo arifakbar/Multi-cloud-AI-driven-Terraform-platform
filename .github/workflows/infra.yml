@@ -41,6 +41,9 @@ jobs:
     runs-on: ubuntu-latest
     if: ${{ github.event.inputs.cloud == 'all' || github.event.inputs.cloud == 'azure' }}
 
+    outputs:
+      high_risk: ${{steps.severity.outputs.high}}
+
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -95,6 +98,10 @@ jobs:
         id: analyzer
         run: |
          python ai-engine/main.py terraform/azure/plan.json
+    
+      - name: Publish Report
+        run: |
+          cat SECURITY_REPORT.md >> $GITHUB_STEP_SUMMARY
 
 # ----------------------------
 # Azure Apply
@@ -198,6 +205,10 @@ jobs:
         id: analyzer
         run: |
          python ai-engine/main.py terraform/aws/plan.json
+
+      - name: Publish Report
+        run: |
+          cat SECURITY_REPORT.md >> $GITHUB_STEP_SUMMARY
 
 # ----------------------------
 # AWS Apply

@@ -8,6 +8,7 @@ from langchain_huggingface import HuggingFaceEmbeddings
 from langchain_chroma import Chroma
 
 from prompts import rag_system_prompt, llm_system_prompt
+from publish_report import publish_report
 
 GROQ_API_KEY = os.getenv("GROQ_API_KEY")
 
@@ -73,7 +74,10 @@ def main():
     HumanMessage(content=res.content)
 ])
     
-    return combined_output(res, res2)
+    result =  combined_output(res, res2)
+    publish_report(result)
+
+    return result
     
 if __name__ == "__main__":
     main()
