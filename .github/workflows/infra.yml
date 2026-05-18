@@ -147,6 +147,14 @@ jobs:
     needs:
       - terraform-plan-azure
       - azure-high-risk-approval
+    
+    if: |
+      always() &&
+      needs.terraform-plan-azure.result == 'success' &&
+      (
+        needs.terraform-plan-azure.outputs.approval_required == 'false' ||
+        needs.azure-high-risk-approval.result == 'success'
+      )
 
     environment: Apply
 
@@ -292,7 +300,15 @@ jobs:
     needs:
       - terraform-plan-aws
       - aws-high-risk-approval
-      
+    
+    if: |
+      always() &&
+      needs.terraform-plan-aws.result == 'success' &&
+      (
+        needs.terraform-plan-aws.outputs.approval_required == 'false' ||
+        needs.aws-high-risk-approval.result == 'success'
+      )
+
     environment: Apply-AWS
 
     defaults:
