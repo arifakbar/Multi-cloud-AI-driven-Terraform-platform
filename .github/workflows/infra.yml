@@ -42,7 +42,7 @@ jobs:
     if: ${{ github.event.inputs.cloud == 'all' || github.event.inputs.cloud == 'azure' }}
 
     outputs:
-      approval_required: ${{ steps.check.outputs.approval_required }}
+      approval_required: ${{ steps.approval_check.outputs.approval_required }}
 
     steps:
       - name: Checkout
@@ -103,6 +103,7 @@ jobs:
           cat SECURITY_REPORT.md
       
       - name: Check Approval Requirement
+        id: approval_check
         run: |
           if grep -q "Approval Required: \*\*True\*\*" SECURITY_REPORT.md; then
             echo "approval_required=true" >> $GITHUB_OUTPUT
@@ -118,8 +119,10 @@ jobs:
     name: Azure High Risk Approval
     runs-on: ubuntu-latest
     needs: terraform-plan-azure
-    if: always() && (github.event.inputs.cloud == 'all' || github.event.inputs.cloud == 'azure')
-    environment: ${{ needs.terraform-plan-azure.outputs.approval_required == 'true' && 'high-risk-azure' || 'none' }}
+
+    if: always() && (github.event.inputs.cloud == 'all' || github.event.inputs.cloud == 'azure') && needs.terraform-plan-azure.outputs.approval_required == 'true'
+
+    environment: high-risk-azure
 
     steps:
       - name: Risk Evaluation
