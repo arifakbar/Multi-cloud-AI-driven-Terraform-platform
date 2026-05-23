@@ -1,0 +1,20 @@
+name: Check Approval Requirement
+description: Parse SECURITY_REPORT.md and determine if approval is required
+outputs:
+  approval_required:
+    description: Whether approval is required
+    value: ${{ steps.check.outputs.approval_required }}
+runs:
+  using: composite
+  steps:
+    - name: Check Approval Requirement
+      id: check
+      shell: bash
+      run: |-
+        if grep -q "Approval Required: \*\*True\*\*" SECURITY_REPORT.md; then
+          echo "approval_required=true" >> $GITHUB_OUTPUT
+          echo "Approval Required"
+        else
+          echo "approval_required=false" >> $GITHUB_OUTPUT
+          echo "Approval Not Required"
+        fi

@@ -1,5 +1,5 @@
-name: Terraform Plan
-description: Run terraform init, plan and export JSON
+name: Terraform Apply
+description: Run terraform init, plan and apply
 inputs:
   working-directory:
     description: Terraform working directory
@@ -27,7 +27,7 @@ runs:
       shell: bash
       working-directory: ${{ inputs.working-directory }}
       run: terraform plan -out=tfplan
-    - name: Export Plan JSON
+    - name: Terraform Apply
       shell: bash
       working-directory: ${{ inputs.working-directory }}
-      run: terraform show -json tfplan > plan.json
+      run: terraform apply -auto-approve tfplan

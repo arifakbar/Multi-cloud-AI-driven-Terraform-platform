@@ -74,14 +74,7 @@ jobs:
       
       - name: Check Approval Requirement
         id: approval_check
-        run: |
-          if grep -q "Approval Required: \*\*True\*\*" SECURITY_REPORT.md; then
-            echo "approval_required=true" >> $GITHUB_OUTPUT
-            echo "Approval Required"
-          else
-            echo "approval_required=false" >> $GITHUB_OUTPUT
-            echo "Approval Not Required"
-          fi
+        uses: ./.github/actions/check-approval
 
 # ----------------------------
 # Azure High Risk Approval
@@ -128,10 +121,6 @@ jobs:
 
     environment: Apply
 
-    defaults:
-      run:
-        working-directory: terraform/azure
-
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -143,17 +132,10 @@ jobs:
           tenant-id: ${{ env.ARM_TENANT_ID }}
           subscription-id: ${{ env.ARM_SUBSCRIPTION_ID }}
 
-      - name: Setup Terraform
-        uses: hashicorp/setup-terraform@v3
-
-      - name: Terraform Init
-        run: terraform init
-
-      - name: Terraform Plan
-        run: terraform plan -out=tfplan
-
       - name: Terraform Apply
-        run: terraform apply -auto-approve tfplan
+        uses: ./.github/actions/terraform-apply
+        with:
+          working-directory: terraform/azure
 
 
 # ----------------------------
@@ -197,14 +179,7 @@ jobs:
       
       - name: Check Approval Requirement
         id: approval_check
-        run: |
-          if grep -q "Approval Required: \*\*True\*\*" SECURITY_REPORT.md; then
-            echo "approval_required=true" >> $GITHUB_OUTPUT
-            echo "Approval Required"
-          else
-            echo "approval_required=false" >> $GITHUB_OUTPUT
-            echo "Approval Not Required"
-          fi
+        uses: ./.github/actions/check-approval
 
 # ----------------------------
 # AWS High Risk Approval
@@ -251,10 +226,6 @@ jobs:
 
     environment: Apply-AWS
 
-    defaults:
-      run:
-        working-directory: terraform/aws
-
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -265,14 +236,7 @@ jobs:
           role-to-assume: ${{ env.AWS_ARN }}
           aws-region: ${{ env.AWS_REGION }}
 
-      - name: Setup Terraform
-        uses: hashicorp/setup-terraform@v3
-
-      - name: Terraform Init
-        run: terraform init
-
-      - name: Terraform Plan
-        run: terraform plan -out=tfplan
-
       - name: Terraform Apply
-        run: terraform apply -auto-approve tfplan
+        uses: ./.github/actions/terraform-apply
+        with:
+          working-directory: terraform/aws
