@@ -41,8 +41,11 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
-      - name: Setup AI Engine
-        uses: ./.github/actions/setup-ai
+      - name: Setup Python AI
+        uses: ./.github/actions/setup-python-ai
+      
+      - name: Build Vector DB
+        uses: ./.github/actions/build-vector-db
 
       - name: Upload Vector DB
         uses: actions/upload-artifact@v4
@@ -68,18 +71,17 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
-      - name: Azure Login
-        uses: azure/login@v2
-        with:
-          client-id: ${{ secrets.AZURE_CLIENT_ID }}
-          tenant-id: ${{ secrets.AZURE_TENANT_ID }}
-          subscription-id: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
+      - name: Azure Authentication
+        uses: ./.github/actions/auth-azure
 
       - name: Terraform Plan
         uses: ./.github/actions/terraform-plan
         with:
           working-directory: terraform/azure
 
+      - name: Setup Vector DB
+        uses: ./.github/actions/setup-python-ai
+      
       - name: Download Vector DB
         uses: actions/download-artifact@v4
         with:
@@ -175,16 +177,16 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
-      - name: Configure AWS Credentials via OIDC
-        uses: aws-actions/configure-aws-credentials@v2
-        with:
-          role-to-assume: ${{ env.AWS_ARN }}
-          aws-region: ${{ env.AWS_REGION }}
+      - name: AWS Authentication
+        uses: ./.github/actions/auth-aws
 
       - name: Terraform Plan
         uses: ./.github/actions/terraform-plan
         with:
           working-directory: terraform/aws
+      
+      - name: Setup Vector DB
+        uses: ./.github/actions/setup-python-ai
       
       - name: Download Vector DB
         uses: actions/download-artifact@v4

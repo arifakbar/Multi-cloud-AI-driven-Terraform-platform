@@ -1,0 +1,8 @@
+name: Build Vector Database
+description: Build Chroma vector database for AI analysis
+runs:
+  using: composite
+  steps:
+    - name: Build Vector Index
+      shell: bash
+      run: python ai-engine/vector_store.py
