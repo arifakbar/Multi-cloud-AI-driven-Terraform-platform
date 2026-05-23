@@ -79,7 +79,7 @@ jobs:
         with:
           working-directory: terraform/azure
 
-      - name: Setup Vector DB
+      - name: Setup Python AI
         uses: ./.github/actions/setup-python-ai
       
       - name: Download Vector DB
@@ -185,7 +185,7 @@ jobs:
         with:
           working-directory: terraform/aws
       
-      - name: Setup Vector DB
+      - name: Setup Python AI
         uses: ./.github/actions/setup-python-ai
       
       - name: Download Vector DB
