@@ -48,28 +48,8 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
-      - name: Cache Python Dependencies
-        uses: actions/cache@v3
-        with: 
-          path: ~/.cache/pip
-          key: ${{ runner.os }}-pip-${{ hashFiles('ai-engine/requirements.txt') }}
-          restore-keys: |
-            ${{ runner.os }}-pip-
-
-      - name: Cache HuggingFace Models
-        uses: actions/cache@v3
-        with : 
-          path: ~/.cache/huggingface
-          key: ${{ runner.os }}-hf-${{ hashFiles('ai-engine/requirements.txt') }}
-          restore-keys: |
-            ${{ runner.os }}-hf-
-
-      - name: Install Python & Dependencies
-        run : |
-          pip install -r ai-engine/requirements.txt
-      
-      - name: Build Vector Index
-        run: python ai-engine/vector_store.py
+      - name: Setup AI Engine
+        uses: ./.github/actions/setup-ai
 
       - name: Azure Login
         uses: azure/login@v2
@@ -202,28 +182,8 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
-      - name: Cache Python Dependencies
-        uses: actions/cache@v3
-        with: 
-          path: ~/.cache/pip
-          key: ${{ runner.os }}-pip-${{ hashFiles('ai-engine/requirements.txt') }}
-          restore-keys: |
-            ${{ runner.os }}-pip-
-
-      - name: Cache HuggingFace Models
-        uses: actions/cache@v3
-        with : 
-          path: ~/.cache/huggingface
-          key: ${{ runner.os }}-hf-${{ hashFiles('ai-engine/requirements.txt') }}
-          restore-keys: |
-            ${{ runner.os }}-hf-
-
-      - name: Install Python & Dependencies
-        run : |
-          pip install -r ai-engine/requirements.txt
-      
-      - name: Build Vector Index
-        run: python ai-engine/vector_store.py
+      - name: Setup AI Engine
+        uses: ./.github/actions/setup-ai
 
       - name: Configure AWS Credentials via OIDC
         uses: aws-actions/configure-aws-credentials@v2
