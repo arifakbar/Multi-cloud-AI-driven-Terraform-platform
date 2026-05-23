@@ -58,20 +58,10 @@ jobs:
           tenant-id: ${{ secrets.AZURE_TENANT_ID }}
           subscription-id: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
 
-      - name: Setup Terraform
-        uses: hashicorp/setup-terraform@v3
-
-      - name: Terraform Init
-        working-directory: terraform/azure
-        run: terraform init
-
       - name: Terraform Plan
-        working-directory: terraform/azure
-        run: terraform plan -out=tfplan
-
-      - name: Export Plan JSON
-        working-directory: terraform/azure
-        run: terraform show -json tfplan > plan.json
+        uses: ./.github/actions/terraform-plan
+        with:
+          working-directory: terraform/azure
 
       - name: Run AI Analyzer
         id: analyzer
@@ -191,20 +181,10 @@ jobs:
           role-to-assume: ${{ env.AWS_ARN }}
           aws-region: ${{ env.AWS_REGION }}
 
-      - name: Setup Terraform
-        uses: hashicorp/setup-terraform@v3
-
-      - name: Terraform Init
-        working-directory: terraform/aws
-        run: terraform init
-
       - name: Terraform Plan
-        working-directory: terraform/aws
-        run: terraform plan -out=tfplan
-
-      - name: Export Plan JSON
-        working-directory: terraform/aws
-        run: terraform show -json tfplan > plan.json
+        uses: ./.github/actions/terraform-plan
+        with:
+          working-directory: terraform/aws
 
       - name: Run AI Analyzer
         id: analyzer

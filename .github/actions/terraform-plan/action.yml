@@ -1,0 +1,23 @@
+name: Terraform Plan
+description: Run terraform init, plan and export JSON
+inputs:
+  working-directory:
+    description: Terraform working directory
+    required: true
+runs:
+  using: composite
+  steps:
+    - name: Setup Terraform
+      uses: hashicorp/setup-terraform@v3
+    - name: Terraform Init
+      shell: bash
+      working-directory: ${{ inputs.working-directory }}
+      run: terraform init
+    - name: Terraform Plan
+      shell: bash
+      working-directory: ${{ inputs.working-directory }}
+      run: terraform plan -out=tfplan
+    - name: Export Plan JSON
+      shell: bash
+      working-directory: ${{ inputs.working-directory }}
+      run: terraform show -json tfplan > plan.json
