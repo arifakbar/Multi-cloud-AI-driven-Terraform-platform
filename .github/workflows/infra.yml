@@ -31,14 +31,34 @@ env:
   AWS_ARN: arn:aws:iam::007222077088:role/Github-Actions
   AWS_REGION: us-east-1
 
+jobs:
+
+  prepare-ai-assets:
+    name: Prepare AI Assets
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup AI Engine
+        uses: ./.github/actions/setup-ai
+
+      - name: Upload Vector DB
+        uses: actions/upload-artifact@v4
+        with:
+          name: vector-db
+          path: ai-engine/vector_db
+
 # ----------------------------
 # Azure Terraform Plan
 # ----------------------------
-jobs:
 
   terraform-plan-azure:
     name: Terraform Plan (Azure)
     runs-on: ubuntu-latest
+    needs: prepare-ai-assets
+
     if: ${{ github.event.inputs.cloud == 'all' || github.event.inputs.cloud == 'azure' }}
 
     outputs:
@@ -47,9 +67,6 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v4
-
-      - name: Setup AI Engine
-        uses: ./.github/actions/setup-ai
 
       - name: Azure Login
         uses: azure/login@v2
@@ -62,6 +79,12 @@ jobs:
         uses: ./.github/actions/terraform-plan
         with:
           working-directory: terraform/azure
+
+      - name: Download Vector DB
+        uses: actions/download-artifact@v4
+        with:
+          name: vector-db
+          path: ai-engine/vector_db
 
       - name: Run AI Analyzer
         id: analyzer
@@ -125,12 +148,8 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
-      - name: Azure Login
-        uses: azure/login@v2
-        with:
-          client-id: ${{ env.ARM_CLIENT_ID }}
-          tenant-id: ${{ env.ARM_TENANT_ID }}
-          subscription-id: ${{ env.ARM_SUBSCRIPTION_ID }}
+      - name: Azure Authentication
+        uses: ./.github/actions/auth-azure
 
       - name: Terraform Apply
         uses: ./.github/actions/terraform-apply
@@ -145,6 +164,8 @@ jobs:
   terraform-plan-aws:
     name: Terraform Plan (AWS)
     runs-on: ubuntu-latest
+    needs: prepare-ai-assets
+
     if: ${{ github.event.inputs.cloud == 'all' || github.event.inputs.cloud == 'aws' }}
 
     outputs:
@@ -153,9 +174,6 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v4
-
-      - name: Setup AI Engine
-        uses: ./.github/actions/setup-ai
 
       - name: Configure AWS Credentials via OIDC
         uses: aws-actions/configure-aws-credentials@v2
@@ -167,6 +185,12 @@ jobs:
         uses: ./.github/actions/terraform-plan
         with:
           working-directory: terraform/aws
+      
+      - name: Download Vector DB
+        uses: actions/download-artifact@v4
+        with:
+          name: vector-db
+          path: ai-engine/vector_db
 
       - name: Run AI Analyzer
         id: analyzer
@@ -230,11 +254,8 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
-      - name: Configure AWS Credentials via OIDC
-        uses: aws-actions/configure-aws-credentials@v2
-        with:
-          role-to-assume: ${{ env.AWS_ARN }}
-          aws-region: ${{ env.AWS_REGION }}
+      - name: AWS Authentication
+        uses: ./.github/actions/auth-aws
 
       - name: Terraform Apply
         uses: ./.github/actions/terraform-apply

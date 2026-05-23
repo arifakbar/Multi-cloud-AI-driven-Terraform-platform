@@ -1,0 +1,10 @@
+name: AWS Authentication
+description: Authenticate to AWS using OIDC
+runs:
+  using: composite
+  steps:
+    - name: Configure AWS Credentials
+      uses: aws-actions/configure-aws-credentials@v2
+      with:
+        role-to-assume: ${{ env.AWS_ARN }}
+        aws-region: ${{ env.AWS_REGION }}
